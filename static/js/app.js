@@ -2853,26 +2853,28 @@ function renderEmployees(){
 
   if(tab==='roster'){
     body = `
-      <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border-soft);">
         <div>
-          <div style="font-weight:700;font-size:14px;">👥 Employee Staff Roster &amp; Profile Directory</div>
-          <div style="font-size:11.5px;color:var(--ink-faint);">Add team members, edit roles, manage attendance status and performance scores</div>
+          <div style="font-weight:800;font-size:15px;color:var(--ink);display:flex;align-items:center;gap:6px;">
+            <span>👥 Employee Staff Roster &amp; Profile Directory</span>
+          </div>
+          <div style="font-size:12px;color:var(--ink-faint);margin-top:3px;">Add team members, edit roles, manage attendance status and performance scores</div>
         </div>
         <button class="btn btn-primary btn-sm" onclick="openCreateEmployeeModal()">${icon('plus')} Create New Employee Profile</button>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;flex-direction:column;gap:12px;">
         ${EMPLOYEES.map(e=>`
-          <div class="emp-card" style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
+          <div class="emp-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-sm);">
             <div class="emp-avatar">${e.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
             <div style="flex:1;">
-              <div class="td-title" style="font-size:14px;font-weight:700;">${e.name}</div>
-              <div class="td-sub" style="font-size:12px;color:var(--ink-faint);">${e.role} · Joined ${e.joined}</div>
+              <div class="td-title" style="font-size:14.5px;font-weight:700;color:var(--ink);">${e.name}</div>
+              <div class="td-sub" style="font-size:12px;color:var(--ink-faint);margin-top:2px;">${e.role} · Joined ${e.joined}</div>
             </div>
             ${statusChip(e.attendance)}
             <div style="width:110px;text-align:right;margin-right:12px;">
-              <div class="td-sub" style="font-size:11px;">Performance</div>
-              <div class="td-title" style="font-size:14px;font-weight:800;color:var(--accent);">${e.performance}%</div>
+              <div class="td-sub" style="font-size:11px;color:var(--ink-faint);">Performance</div>
+              <div class="td-title" style="font-size:14.5px;font-weight:800;color:var(--accent);">${e.performance}%</div>
             </div>
             <div style="display:flex;gap:6px;">
               <button class="btn btn-secondary btn-sm" onclick="openEditEmployeeModal('${e.id}')" title="Edit Employee Profile">${icon('edit')} Edit</button>
@@ -3044,7 +3046,7 @@ function renderEmployees(){
     <div class="tabs">
       ${tabsList.map(t=>`<div class="tab ${tab===t?'active':''}" onclick="STATE.employeeTab='${t}';renderAll();">${t === 'users' ? '🔑 User Accounts & Access Points' : t.charAt(0).toUpperCase()+t.slice(1)}${t==='leave'?' Requests':''}</div>`).join('')}
     </div>
-    <div class="card ${tab==='roster'?'':'card-pad'}">${body}</div>`;
+    <div class="card card-pad">${body}</div>`;
 }
 
 function openCreateEmployeeModal(){
