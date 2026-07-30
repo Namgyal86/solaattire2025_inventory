@@ -1372,84 +1372,107 @@ function closePanel(){document.getElementById('panelOverlay').classList.remove('
 window.closePanel = closePanel;
 
 async function submitOrder(){
-  const medium = STATE.orderDispatchMedium || 'ncm';
-  const customerName = document.getElementById('co_customer').value || 'Customer';
-  const handle = document.getElementById('co_handle').value || '@customer';
-  const phone = document.getElementById('co_phone') ? document.getElementById('co_phone').value : '9847023226';
-  const phone2 = document.getElementById('co_phone2') ? document.getElementById('co_phone2').value : '';
-  const address = document.getElementById('co_address') ? document.getElementById('co_address').value : 'Kathmandu, Ward 4';
-  const branchEl = document.getElementById('co_branch_val');
-  const fbranchEl = document.getElementById('co_fbranch_val');
-  const branch = branchEl ? branchEl.value : (medium==='ncm'?'POKHARA':'Kathmandu');
-  const fbranch = fbranchEl ? fbranchEl.value : 'TINKUNE';
-  const delivery_type = document.getElementById('co_delivery_type') ? document.getElementById('co_delivery_type').value : 'Door2Door';
-  const instruction = document.getElementById('co_instruction') ? document.getElementById('co_instruction').value : 'Call recipient before delivery';
-  const autoNcm = document.getElementById('co_auto_ncm') ? document.getElementById('co_auto_ncm').checked : false;
-  const codInput = document.getElementById('co_cod_charge');
+  try {
+    const medium = STATE.orderDispatchMedium || 'ncm';
+    const custEl = document.getElementById('co_customer');
+    const handleEl = document.getElementById('co_handle');
+    const phoneEl = document.getElementById('co_phone');
+    const phone2El = document.getElementById('co_phone2');
+    const addressEl = document.getElementById('co_address');
+    const branchEl = document.getElementById('co_branch_val');
+    const fbranchEl = document.getElementById('co_fbranch_val');
+    const deliveryTypeEl = document.getElementById('co_delivery_type');
+    const instructionEl = document.getElementById('co_instruction');
+    const autoNcmEl = document.getElementById('co_auto_ncm');
+    const codInput = document.getElementById('co_cod_charge');
 
-  const subtotal = STATE.pendingOrderItems.reduce((a,i)=>a+i.regularLineTotal,0);
-  const discount = STATE.pendingOrderItems.reduce((a,i)=>a+(i.regularLineTotal-i.lineTotal),0);
-  const calculatedTotal = subtotal - discount;
-  const finalCodAmount = (codInput && codInput.value !== '') ? parseFloat(codInput.value) : calculatedTotal;
+    const activeConv = CONVERSATIONS.find(c => c.id === STATE.activeConvId);
 
-  const payload = {
-    customer: customerName,
-    handle: handle,
-    phone: phone,
-    address: address,
-    destination: branch,
-    offer: discount > 0 ? {name:'Applied offer', amount:discount} : null,
-    total: calculatedTotal,
-    date: new Date().toISOString().split('T')[0],
-    items: STATE.pendingOrderItems.map(i=>({name:i.name, variant:i.variant, qty:i.qty, price:i.lineTotal}))
-  };
+    const customerName = (custEl && custEl.value) ? custEl.value : (activeConv ? activeConv.name : 'Customer');
+    const handle = (handleEl && handleEl.value) ? handleEl.value : (activeConv ? activeConv.handle : '@customer');
+    const phone = (phoneEl && phoneEl.value) ? phoneEl.value : '9847023226';
+    const phone2 = (phone2El && phone2El.value) ? phone2El.value : '';
+    const address = (addressEl && addressEl.value) ? addressEl.value : 'Kathmandu, Ward 4';
+    const branch = (branchEl && branchEl.value) ? branchEl.value : (medium==='ncm'?'POKHARA':'Kathmandu');
+    const fbranch = (fbranchEl && fbranchEl.value) ? fbranchEl.value : 'TINKUNE';
+    const delivery_type = (deliveryTypeEl && deliveryTypeEl.value) ? deliveryTypeEl.value : 'Door2Door';
+    const instruction = (instructionEl && instructionEl.value) ? instructionEl.value : 'Call recipient before delivery';
+    const autoNcm = autoNcmEl ? autoNcmEl.checked : false;
 
-  // 1. Save Order to SQLite DB
-  const res = await fetch('/api/orders', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  });
-
-  if(res.ok){
-    const orderData = await res.json();
-    const createdOrderId = (orderData.order && orderData.order.id) ? orderData.order.id : (orderData.id || 'ORD-NEW');
-
-    // 2. If NCM medium and Auto-NCM is checked, create NCM Courier Shipment via NCM API
-    if(medium === 'ncm' && autoNcm){
-      const packageDesc = STATE.pendingOrderItems.map(i=>`${i.qty}x ${i.name}`).join(', ');
-      const ncmPayload = {
-        orderId: createdOrderId,
-        name: customerName,
-        phone: phone,
-        phone2: phone2,
-        cod_charge: finalCodAmount,
-        address: address,
-        fbranch: fbranch,
-        branch: branch,
-        delivery_type: delivery_type,
-        weight: '1',
-        package: packageDesc,
-        vref_id: createdOrderId,
-        instruction: instruction
-      };
-
-      const ncmRes = await fetch('/api/shipments/ncm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ncmPayload)
-      });
-      const ncmData = await ncmRes.json();
-      const waybill = ncmData.shipment ? ncmData.shipment.ncm : 'NCM-DISPATCHED';
-      toast(`Order ${createdOrderId} created & NCM Dispatched (${waybill})!`);
-    } else {
-      toast(`Order ${createdOrderId} created successfully (${medium==='ncm'?'Pending NCM':'Local Order'})`);
+    if (!STATE.pendingOrderItems || STATE.pendingOrderItems.length === 0) {
+      toast('Please select at least 1 product variant to create order', 'error');
+      return;
     }
 
-    STATE.pendingOrderItems = [];
-    closePanel();
-    await fetchAllData();
-    navigate('orders');
+    const subtotal = STATE.pendingOrderItems.reduce((a,i)=>a+i.regularLineTotal,0);
+    const discount = STATE.pendingOrderItems.reduce((a,i)=>a+(i.regularLineTotal-i.lineTotal),0);
+    const calculatedTotal = subtotal - discount;
+    const finalCodAmount = (codInput && codInput.value !== '') ? parseFloat(codInput.value) : calculatedTotal;
+
+    const payload = {
+      customer: customerName,
+      handle: handle,
+      phone: phone,
+      address: address,
+      destination: branch,
+      offer: discount > 0 ? {name:'Applied offer', amount:discount} : null,
+      total: calculatedTotal,
+      date: new Date().toISOString().split('T')[0],
+      items: STATE.pendingOrderItems.map(i=>({name:i.name, variant:i.variant, qty:i.qty, price:i.lineTotal}))
+    };
+
+    // 1. Save Order to SQLite DB
+    const res = await fetch('/api/orders', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+
+    if(res.ok){
+      const orderData = await res.json();
+      const createdOrderId = (orderData.order && orderData.order.id) ? orderData.order.id : (orderData.id || 'ORD-NEW');
+
+      // 2. If NCM medium and Auto-NCM is checked, create NCM Courier Shipment via NCM API
+      if(medium === 'ncm' && autoNcm){
+        const packageDesc = STATE.pendingOrderItems.map(i=>`${i.qty}x ${i.name}`).join(', ');
+        const ncmPayload = {
+          orderId: createdOrderId,
+          name: customerName,
+          phone: phone,
+          phone2: phone2,
+          cod_charge: finalCodAmount,
+          address: address,
+          fbranch: fbranch,
+          branch: branch,
+          delivery_type: delivery_type,
+          weight: '1',
+          package: packageDesc,
+          vref_id: createdOrderId,
+          instruction: instruction
+        };
+
+        const ncmRes = await fetch('/api/shipments/ncm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ncmPayload)
+        });
+        const ncmData = await ncmRes.json();
+        const waybill = ncmData.shipment ? ncmData.shipment.ncm : 'NCM-DISPATCHED';
+        toast(`Order ${createdOrderId} created & NCM Dispatched (${waybill})!`);
+      } else {
+        toast(`Order ${createdOrderId} created successfully (${medium==='ncm'?'Pending NCM':'Local Order'})`);
+      }
+
+      STATE.pendingOrderItems = [];
+      closePanel();
+      await fetchAllData();
+      navigate('orders');
+    } else {
+      toast('Failed to create order. Please try again.', 'error');
+    }
+  } catch (err) {
+    console.error('submitOrder Error:', err);
+    toast('An unexpected error occurred while creating order', 'error');
   }
 }
 window.submitOrder = submitOrder;
