@@ -1501,12 +1501,27 @@ function statusPill(status){
   const map = {
     pending:{cls:'pill-neutral', label:'Pending'},
     confirmed:{cls:'pill-info', label:'Confirmed'},
-    shipped:{cls:'pill-warning', label:'Shipped'},
-    delivered:{cls:'pill-success', label:'Delivered'},
+    packed:{cls:'pill-warning', label:'📦 Package Packed'},
+    shipped:{cls:'pill-warning', label:'🚚 Dispatched via NCM'},
+    delivered:{cls:'pill-success', label:'✅ Delivered'},
   };
   const m = map[status]||map.pending;
   return `<span class="pill ${m.cls}"><span class="pill-dot" style="background:currentColor;"></span>${m.label}</span>`;
 }
+
+async function markOrderPacked(oid){
+  const res = await fetch(`/api/orders/${oid}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'packed' })
+  });
+
+  if(res.ok){
+    toast(`📦 Package for ${oid} is packed! Now ready to send to NCM.`);
+    await fetchAllData();
+  }
+}
+window.markOrderPacked = markOrderPacked;
 
 function renderOrders(){
   const tf = STATE.orderTimeframe;
@@ -1530,19 +1545,34 @@ function renderOrders(){
   const totalSales = filteredOrders.reduce((a,o) => a + o.total, 0);
   const avgOrderVal = filteredOrders.length ? Math.round(totalSales / filteredOrders.length) : 0;
   const deliveredCount = filteredOrders.filter(o => o.status === 'delivered').length;
-  const pendingCount = filteredOrders.filter(o => o.status === 'pending').length;
-  const shippedCount = filteredOrders.filter(o => o.status === 'shipped' || o.status === 'confirmed').length;
+  const packedCount = filteredOrders.filter(o => o.status === 'packed').length;
+  const shippedCount = filteredOrders.filter(o => o.status === 'shipped' || o.status === 'in-transit').length;
 
-  const rows = filteredOrders.map(o=>`
-    <tr class="clickable" onclick="openOrderDetail('${o.id}')">
-      <td class="mono td-title">${o.id}</td>
-      <td><div class="td-title">${o.customer}</div><div class="td-sub">${o.handle}</div></td>
-      <td>${o.items.length} item${o.items.length>1?'s':''}</td>
-      <td>${o.offer?`<span class="price-tag">${o.offer.name}</span>`:'<span class="td-sub">—</span>'}</td>
-      <td class="mono font-bold" style="color:var(--accent);">${fmtNPR(o.total)}</td>
-      <td>${statusPill(o.status)}</td>
-      <td class="td-sub">${o.date}</td>
-    </tr>`).join('');
+  const rows = filteredOrders.map(o=> {
+    let actionBtn = '';
+    const shipment = SHIPMENTS.find(s => s.order === o.id);
+    const ncmWaybill = shipment && shipment.ncm ? shipment.ncm : null;
+
+    if (o.status === 'pending' || o.status === 'confirmed') {
+      actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markOrderPacked('${o.id}')" style="padding:4px 8px;font-size:11px;">📦 Mark Packed</button>`;
+    } else if (o.status === 'packed') {
+      actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openNCMShipmentModal('${o.id}')" style="padding:4px 8px;font-size:11px;background:linear-gradient(135deg, #25d366 0%, #128c7e 100%);">🚚 Send to NCM</button>`;
+    } else if (ncmWaybill) {
+      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();trackNCM('${ncmWaybill}')" style="padding:4px 8px;font-size:11px;">🚚 Track NCM</button>`;
+    }
+
+    return `
+      <tr class="clickable" onclick="openOrderDetail('${o.id}')">
+        <td class="mono td-title">${o.id}</td>
+        <td><div class="td-title">${o.customer}</div><div class="td-sub">${o.handle}</div></td>
+        <td>${o.items.length} item${o.items.length>1?'s':''}</td>
+        <td>${o.offer?`<span class="price-tag">${o.offer.name}</span>`:'<span class="td-sub">—</span>'}</td>
+        <td class="mono font-bold" style="color:var(--accent);">${fmtNPR(o.total)}</td>
+        <td>${statusPill(o.status)}</td>
+        <td class="td-sub">${o.date}</td>
+        <td>${actionBtn}</td>
+      </tr>`;
+  }).join('');
 
   return `
     <div class="page-head">
@@ -1581,7 +1611,8 @@ function renderOrders(){
             <option value="all" ${stFilter==='all'?'selected':''}>All Statuses</option>
             <option value="pending" ${stFilter==='pending'?'selected':''}>Pending</option>
             <option value="confirmed" ${stFilter==='confirmed'?'selected':''}>Confirmed</option>
-            <option value="shipped" ${stFilter==='shipped'?'selected':''}>Shipped</option>
+            <option value="packed" ${stFilter==='packed'?'selected':''}>Package Packed</option>
+            <option value="shipped" ${stFilter==='shipped'?'selected':''}>Shipped / Dispatched</option>
             <option value="delivered" ${stFilter==='delivered'?'selected':''}>Delivered</option>
           </select>
         </div>
@@ -1604,9 +1635,9 @@ function renderOrders(){
       </div>
 
       <div class="card stat-card">
-        <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);">${icon('truck')}</div>
-        <div class="stat-value">${shippedCount}</div>
-        <div class="stat-label">Dispatched / Shipped</div>
+        <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);">${icon('box')}</div>
+        <div class="stat-value">${packedCount}</div>
+        <div class="stat-label">Packages Packed (${shippedCount} Dispatched)</div>
       </div>
 
       <div class="card stat-card">
@@ -1627,9 +1658,10 @@ function renderOrders(){
             <th>Total Amount</th>
             <th>Status</th>
             <th>Order Date</th>
+            <th>Fulfillment Action</th>
           </tr>
         </thead>
-        <tbody>${rows.length ? rows : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-faint);">No orders match the selected date filter</td></tr>'}</tbody>
+        <tbody>${rows.length ? rows : '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-faint);">No orders match the selected date filter</td></tr>'}</tbody>
       </table>
     </div>`;
 }
@@ -1640,11 +1672,12 @@ window.openOrderDetail = openOrderDetail;
 function renderOrderDetail(){
   const o = ORDERS.find(x=>x.id===STATE.orderDetailId);
   if(!o) return renderOrders();
-  const steps = ['pending','confirmed','shipped','delivered'];
-  const curIdx = steps.indexOf(o.status);
+  const steps = ['pending','confirmed','packed','shipped','delivered'];
+  const curIdx = steps.indexOf(o.status) >= 0 ? steps.indexOf(o.status) : 1;
   const stepsHtml = steps.map((s,i)=>{
     const cls = i<curIdx?'done':(i===curIdx?'current':'');
-    return `<div class="tl-step ${cls}">${i>0?'<div class="tl-line"></div>':''}<div class="tl-dot">${i<=curIdx?icon('check'):''}</div><div class="tl-label">${s.charAt(0).toUpperCase()+s.slice(1)}</div></div>`;
+    const labelMap = { pending:'Pending', confirmed:'Confirmed', packed:'📦 Packed', shipped:'🚚 Dispatched', delivered:'✅ Delivered' };
+    return `<div class="tl-step ${cls}">${i>0?'<div class="tl-line"></div>':''}<div class="tl-dot">${i<=curIdx?icon('check'):''}</div><div class="tl-label">${labelMap[s]||s}</div></div>`;
   }).join('');
 
   const itemRows = o.items.map(it=>`
@@ -1655,12 +1688,36 @@ function renderOrderDetail(){
 
   const subtotal = o.items.reduce((a,i)=>a+i.price*i.qty,0) + (o.offer?o.offer.amount:0);
 
+  let actionBanner = '';
+  if (o.status === 'pending' || o.status === 'confirmed') {
+    actionBanner = `
+      <div style="background:var(--accent-soft);border:1px solid var(--border-soft);padding:14px 18px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-weight:800;font-size:14px;color:var(--ink);">📦 Step 1: Package Apparel &amp; Item Packing</div>
+          <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">After items are packed into polybags/boxes, click below to mark package as Ready for NCM</div>
+        </div>
+        <button class="btn btn-primary" onclick="markOrderPacked('${o.id}')">${icon('box')} 📦 Mark Package as Packed</button>
+      </div>`;
+  } else if (o.status === 'packed') {
+    actionBanner = `
+      <div style="background:#eefbf3;border:1px solid #c7f2d5;padding:14px 18px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-weight:800;font-size:14px;color:#128c7e;">🚚 Step 2: Package Packed &amp; Ready for Courier Dispatch!</div>
+          <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Package is packed and sealed. You can now dispatch it directly to Nepal Can Move (NCM API)</div>
+        </div>
+        <button class="btn btn-primary" onclick="openNCMShipmentModal('${o.id}')" style="background:linear-gradient(135deg, #25d366 0%, #128c7e 100%);">${icon('truck')} 🚚 Dispatch via NCM API</button>
+      </div>`;
+  }
+
   return `
     <div class="page-head">
       <div><button class="btn btn-ghost btn-sm" onclick="STATE.orderDetailId=null;renderAll();" style="margin-bottom:8px;">&larr; Back to orders</button>
       <h1 class="mono">${o.id}</h1><p class="page-sub">Placed on ${o.date} via Instagram DM</p></div>
       ${statusPill(o.status)}
     </div>
+    
+    ${actionBanner}
+
     <div class="card card-pad" style="margin-bottom:16px;">
       <div class="timeline">${stepsHtml}</div>
     </div>
