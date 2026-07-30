@@ -1552,6 +1552,11 @@ function renderOrders(){
     let actionBtn = '';
     const shipment = SHIPMENTS.find(s => s.order === o.id);
     const ncmWaybill = shipment && shipment.ncm ? shipment.ncm : null;
+    const isPacked = o.status === 'packed' || o.status === 'shipped' || o.status === 'in-transit' || o.status === 'delivered';
+
+    const packingStatusBadge = isPacked
+      ? `<span class="pill pill-success" style="font-size:11px;font-weight:700;"><span class="pill-dot" style="background:currentColor;"></span>✅ Packed</span>`
+      : `<span class="pill pill-warning" style="font-size:11px;font-weight:700;"><span class="pill-dot" style="background:currentColor;"></span>⏳ Not Packed Yet</span>`;
 
     if (o.status === 'pending' || o.status === 'confirmed') {
       actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markOrderPacked('${o.id}')" style="padding:4px 8px;font-size:11px;">📦 Mark Packed</button>`;
@@ -1564,6 +1569,7 @@ function renderOrders(){
     return `
       <tr class="clickable" onclick="openOrderDetail('${o.id}')">
         <td class="mono td-title">${o.id}</td>
+        <td>${packingStatusBadge}</td>
         <td><div class="td-title">${o.customer}</div><div class="td-sub">${o.handle}</div></td>
         <td>${o.items.length} item${o.items.length>1?'s':''}</td>
         <td>${o.offer?`<span class="price-tag">${o.offer.name}</span>`:'<span class="td-sub">—</span>'}</td>
@@ -1652,6 +1658,7 @@ function renderOrders(){
         <thead>
           <tr>
             <th>Order ID</th>
+            <th>Packing Status</th>
             <th>Customer</th>
             <th>Items</th>
             <th>Offer Applied</th>
@@ -1661,7 +1668,7 @@ function renderOrders(){
             <th>Fulfillment Action</th>
           </tr>
         </thead>
-        <tbody>${rows.length ? rows : '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-faint);">No orders match the selected date filter</td></tr>'}</tbody>
+        <tbody>${rows.length ? rows : '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--ink-faint);">No orders match the selected date filter</td></tr>'}</tbody>
       </table>
     </div>`;
 }
