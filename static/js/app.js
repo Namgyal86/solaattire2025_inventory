@@ -793,6 +793,54 @@ function renderInbox(){
   if(active){
     const msgs = active.messages.map(m=>`<div class="msg ${m.from}">${m.text}<div class="msg-time">${m.time}</div></div>`).join('');
     const isWa = active.channel==='whatsapp';
+
+    // Find latest order for this active chat customer
+    const activeOrder = ORDERS.find(o => o.customer === active.name || o.handle === active.handle);
+    const activeShipment = activeOrder ? SHIPMENTS.find(s => s.order === activeOrder.id) : null;
+    const ncmWaybill = activeShipment && activeShipment.ncm ? activeShipment.ncm : null;
+    const isPacked = activeOrder && (activeOrder.status === 'packed' || activeOrder.status === 'shipped' || activeOrder.status === 'in-transit' || activeOrder.status === 'delivered');
+
+    let orderCardHtml = '';
+    if(activeOrder){
+      orderCardHtml = `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 14px;margin:8px 16px 0 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:var(--shadow-sm);">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="mono" style="font-weight:800;font-size:13px;color:var(--ink);">${activeOrder.id}</span>
+                ${statusPill(activeOrder.status)}
+              </div>
+              <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px;">
+                Total: <b class="mono" style="color:var(--accent);">${fmtNPR(activeOrder.total)}</b> · ${ncmWaybill ? `🚚 NCM Waybill: <code class="mono" style="color:var(--accent);">${ncmWaybill}</code>` : 'Local Order'}
+              </div>
+            </div>
+
+            <!-- Staff Packing Checkbox -->
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;cursor:pointer;background:var(--bg);padding:5px 10px;border-radius:6px;border:1px solid var(--border-soft);">
+              <input type="checkbox" ${isPacked ? 'checked' : ''} onchange="toggleOrderPackedFromChat('${activeOrder.id}', this.checked)" style="width:15px;height:15px;accent-color:var(--accent);">
+              ${isPacked ? '✅ Marked as Packed' : '📦 Mark Package Packed'}
+            </label>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:6px;">
+            ${ncmWaybill ? `
+              <button class="btn btn-secondary btn-sm" onclick="trackNCM('${ncmWaybill}')" style="font-weight:700;padding:4px 9px;font-size:11.5px;">
+                ${icon('search')} 🚚 Track NCM Status
+              </button>
+            ` : `
+              <button class="btn btn-secondary btn-sm" onclick="openNCMShipmentModal('${activeOrder.id}')" style="font-weight:700;padding:4px 9px;font-size:11.5px;background:var(--accent-soft);color:var(--accent-soft-ink);">
+                ${icon('truck')} Send to NCM
+              </button>
+            `}
+            ${activeOrder.status !== 'delivered' ? `
+              <button class="btn btn-secondary btn-sm" onclick="setOrderStatus('${activeOrder.id}', 'delivered')" style="font-weight:700;padding:4px 9px;font-size:11.5px;color:var(--success);">
+                ${icon('check')} Mark Delivered
+              </button>
+            ` : ''}
+          </div>
+        </div>`;
+    }
+
     threadHtml = `
       <div class="thread-head">
         <div class="thread-head-info" style="display:flex;align-items:center;gap:8px;">
@@ -805,6 +853,7 @@ function renderInbox(){
           <button class="btn btn-primary btn-sm" onclick="openCreateOrder('${active.id}')">${icon('cart')} Create Order</button>
         </div>
       </div>
+      ${orderCardHtml}
       <div class="thread-messages" id="threadMsgs">${msgs}</div>
       <div class="thread-input">
         <input type="text" placeholder="${isWa?'Type a WhatsApp message…':'Type a reply…'}" id="chatInput" onkeydown="if(event.key==='Enter')sendChat()">
@@ -1522,6 +1571,21 @@ async function markOrderPacked(oid){
   }
 }
 window.markOrderPacked = markOrderPacked;
+
+async function toggleOrderPackedFromChat(oid, isChecked){
+  const newStatus = isChecked ? 'packed' : 'confirmed';
+  const res = await fetch(`/api/orders/${oid}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: newStatus })
+  });
+
+  if(res.ok){
+    toast(isChecked ? `📦 Package for ${oid} marked as Packed!` : `Order ${oid} status updated`);
+    await fetchAllData();
+  }
+}
+window.toggleOrderPackedFromChat = toggleOrderPackedFromChat;
 
 function renderOrders(){
   const tf = STATE.orderTimeframe;
