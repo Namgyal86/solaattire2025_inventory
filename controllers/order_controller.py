@@ -49,16 +49,28 @@ def create_order():
         )
         db.session.add(item)
         
-        # Deduct variant stock if matching
+        # Deduct variant stock automatically in SQLite inventory
         prod = Product.query.filter_by(name=it.get('name')).first()
+        if not prod and it.get('productId'):
+            prod = Product.query.get(it.get('productId'))
+            
         if prod:
-            parts = it.get('variant', '').split('/')
-            if len(parts) >= 2:
-                size_str = parts[0].strip()
-                color_str = parts[1].strip()
-                var = Variant.query.filter_by(product_id=prod.id, size=size_str, color=color_str).first()
-                if var and var.stock >= item.qty:
-                    var.stock -= item.qty
+            v_raw = it.get('variant', '')
+            parts = v_raw.split('/')
+            size_str = parts[0].strip() if len(parts) >= 1 else ''
+            color_str = parts[1].strip() if len(parts) >= 2 else ''
+            
+            # Match exact variant by size and color
+            var = Variant.query.filter_by(product_id=prod.id, size=size_str, color=color_str).first()
+            if not var and size_str:
+                # Fallback: match by size
+                var = Variant.query.filter_by(product_id=prod.id, size=size_str).first()
+            if not var:
+                # Fallback: pick first variant of product
+                var = Variant.query.filter_by(product_id=prod.id).first()
+                
+            if var:
+                var.stock = max(0, var.stock - item.qty)
                     
     # Also initialize shipment record for NCM
     pkg_str = ", ".join([f"{it.get('qty',1)}x {it.get('name','')}" for it in items_data]) or "Apparel / Clothes"
