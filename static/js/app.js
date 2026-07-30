@@ -1564,6 +1564,14 @@ function renderOrders(){
   const packedCount = filteredOrders.filter(o => o.status === 'packed').length;
   const shippedCount = filteredOrders.filter(o => o.status === 'shipped' || o.status === 'in-transit').length;
 
+  const formatOrderDateTime = o => {
+    const dtStr = o.date || '';
+    const parts = dtStr.split(/[\sT]+/);
+    const dPart = parts[0] || '2026-07-30';
+    const tPart = parts[1] ? parts[1].slice(0, 5) : (o.time ? o.time : '11:45 AM');
+    return `<div style="line-height:1.3;"><div class="mono td-title" style="font-size:12px;">${dPart}</div><div class="td-sub" style="font-size:11px;color:var(--ink-faint);display:flex;align-items:center;gap:3px;margin-top:2px;">${icon('clock')} ${tPart}</div></div>`;
+  };
+
   const rows = filteredOrders.map(o=> {
     let actionBtn = '';
     const shipment = SHIPMENTS.find(s => s.order === o.id);
@@ -1591,7 +1599,7 @@ function renderOrders(){
         <td>${o.offer?`<span class="price-tag">${o.offer.name}</span>`:'<span class="td-sub">—</span>'}</td>
         <td class="mono font-bold" style="color:var(--accent);">${fmtNPR(o.total)}</td>
         <td>${statusPill(o.status)}</td>
-        <td class="td-sub">${o.date}</td>
+        <td>${formatOrderDateTime(o)}</td>
         <td>${actionBtn}</td>
       </tr>`;
   }).join('');
@@ -1680,7 +1688,7 @@ function renderOrders(){
             <th>Offer Applied</th>
             <th>Total Amount</th>
             <th>Status</th>
-            <th>Order Date</th>
+            <th>Order Date &amp; Time</th>
             <th>Fulfillment Action</th>
           </tr>
         </thead>

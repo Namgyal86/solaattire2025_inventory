@@ -26,6 +26,15 @@ def create_order():
     offer_name = offer_info.get('name') if offer_info else None
     offer_amount = offer_info.get('amount', 0) if offer_info else 0
     
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+    req_date = data.get('date')
+    if req_date and len(req_date) == 10:
+        order_datetime = f"{req_date} {datetime.now().strftime('%H:%M')}"
+    elif req_date:
+        order_datetime = req_date
+    else:
+        order_datetime = now_str
+
     order = Order(
         id=oid,
         customer=data.get('customer', 'Anonymous Customer'),
@@ -33,7 +42,7 @@ def create_order():
         offer_name=offer_name,
         offer_amount=offer_amount,
         status='pending',
-        date=data.get('date', '2026-07-28'),
+        date=order_datetime,
         total=float(data.get('total', 0))
     )
     db.session.add(order)
