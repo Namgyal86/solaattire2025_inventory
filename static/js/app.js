@@ -1386,10 +1386,10 @@ async function submitOrder(){
     const autoNcmEl = document.getElementById('co_auto_ncm');
     const codInput = document.getElementById('co_cod_charge');
 
-    const activeConv = CONVERSATIONS.find(c => c.id === STATE.activeConvId);
+    const targetConv = STATE.pendingOrderConv || CONVERSATIONS.find(c => c.id === STATE.activeConvId);
 
-    const customerName = (custEl && custEl.value) ? custEl.value : (activeConv ? activeConv.name : 'Customer');
-    const handle = (handleEl && handleEl.value) ? handleEl.value : (activeConv ? activeConv.handle : '@customer');
+    const customerName = (custEl && custEl.value) ? custEl.value : (targetConv ? targetConv.name : 'Customer');
+    const handle = (handleEl && handleEl.value) ? handleEl.value : (targetConv ? targetConv.handle : '@customer');
     const phone = (phoneEl && phoneEl.value) ? phoneEl.value : '9847023226';
     const phone2 = (phone2El && phone2El.value) ? phone2El.value : '';
     const address = (addressEl && addressEl.value) ? addressEl.value : 'Kathmandu, Ward 4';
@@ -1417,7 +1417,7 @@ async function submitOrder(){
       destination: branch,
       offer: discount > 0 ? {name:'Applied offer', amount:discount} : null,
       total: calculatedTotal,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().replace('T', ' ').slice(0, 16),
       items: STATE.pendingOrderItems.map(i=>({name:i.name, variant:i.variant, qty:i.qty, price:i.lineTotal}))
     };
 
@@ -1565,6 +1565,14 @@ window.toggleOrderPackedFromChat = toggleOrderPackedFromChat;
 function renderOrders(){
   const tf = STATE.orderTimeframe;
   const stFilter = STATE.orderStatusFilter;
+
+  // Sort ORDERS array strictly from NEWEST order to OLDEST order
+  ORDERS.sort((a, b) => {
+    const da = a.date || '';
+    const db = b.date || '';
+    if (da !== db) return db.localeCompare(da);
+    return (b.id || '').localeCompare(a.id || '');
+  });
 
   // Filter ORDERS array by date and status
   const filteredOrders = ORDERS.filter(o => {

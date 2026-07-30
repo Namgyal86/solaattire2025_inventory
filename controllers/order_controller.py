@@ -10,7 +10,7 @@ order_bp = Blueprint('order_bp', __name__)
 
 @order_bp.route('/api/orders', methods=['GET'])
 def get_orders():
-    orders = Order.query.order_by(Order.id.desc()).all()
+    orders = Order.query.order_by(Order.date.desc(), Order.id.desc()).all()
     return jsonify([o.to_dict() for o in orders])
 
 @order_bp.route('/api/orders/<oid>', methods=['GET'])
