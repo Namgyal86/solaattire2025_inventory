@@ -83,16 +83,86 @@ function toast(msg, type = 'success'){
 
 /* ============================= API SERVICES ============================= */
 let NCM_BRANCHES_DATA = [
-  {name:'TINKUNE', district:'KATHMANDU', label:'TINKUNE - KATHMANDU'},
-  {name:'BUTWAL', district:'RUPANDEHI', label:'BUTWAL - RUPANDEHI'},
-  {name:'BHAIRAHAWA', district:'RUPANDEHI', label:'BHAIRAHAWA - RUPANDEHI'},
-  {name:'BIRATNAGAR', district:'MORANG', label:'BIRATNAGAR - MORANG'},
-  {name:'ITAHARI', district:'SUNSARI', label:'ITAHARI - SUNSARI'},
-  {name:'POKHARA', district:'KASKI', label:'POKHARA - KASKI'},
-  {name:'DAMAK', district:'JHAPA', label:'DAMAK - JHAPA'},
-  {name:'JANAKPUR', district:'DHANUSHA', label:'JANAKPUR - DHANUSHA'},
-  {name:'LALITPUR', district:'LALITPUR', label:'LALITPUR - LALITPUR'},
-  {name:'BHAKTAPUR', district:'BHAKTAPUR', label:'BHAKTAPUR - BHAKTAPUR'}
+  // Kathmandu Valley
+  {code:'TINK1', name:'TINKUNE', district:'KATHMANDU', label:'TINKUNE - KATHMANDU'},
+  {code:'CHAB1', name:'CHABAHIL', district:'KATHMANDU', label:'CHABAHIL - KATHMANDU'},
+  {code:'KALA1', name:'KALANKI', district:'KATHMANDU', label:'KALANKI - KATHMANDU'},
+  {code:'SAMA1', name:'SAMAKHUSI', district:'KATHMANDU', label:'SAMAKHUSI - KATHMANDU'},
+  {code:'NEWR1', name:'NEW ROAD', district:'KATHMANDU', label:'NEW ROAD - KATHMANDU'},
+  {code:'LALI1', name:'LALITPUR', district:'LALITPUR', label:'LALITPUR - LALITPUR'},
+  {code:'BHAK1', name:'BHAKTAPUR', district:'BHAKTAPUR', label:'BHAKTAPUR - BHAKTAPUR'},
+  {code:'THAM1', name:'THAMEL', district:'KATHMANDU', label:'THAMEL - KATHMANDU'},
+  {code:'KIRT1', name:'KIRTIPUR', district:'KATHMANDU', label:'KIRTIPUR - KATHMANDU'},
+  
+  // Gandaki & Pokhara Region
+  {code:'POKH1', name:'POKHARA', district:'KASKI', label:'POKHARA - KASKI'},
+  {code:'LEKH1', name:'LEKHNATH', district:'KASKI', label:'LEKHNATH - KASKI'},
+  {code:'DAMA1', name:'DAMAULI', district:'TANAHUN', label:'DAMAULI - TANAHUN'},
+  {code:'SYAN1', name:'SYANGJA', district:'SYANGJA', label:'SYANGJA - SYANGJA'},
+  {code:'WALI1', name:'WALING', district:'SYANGJA', label:'WALING - SYANGJA'},
+  {code:'BAGL1', name:'BAGLUNG', district:'BAGLUNG', label:'BAGLUNG - BAGLUNG'},
+  {code:'BENI1', name:'BENI', district:'MYAGDI', label:'BENI - MYAGDI'},
+  {code:'KUSM1', name:'KUSMA', district:'PARBAT', label:'KUSMA - PARBAT'},
+  {code:'BESI1', name:'BESISAHAR', district:'LAMJUNG', label:'BESISAHAR - LAMJUNG'},
+  {code:'GORK1', name:'GORKHA', district:'GORKHA', label:'GORKHA - GORKHA'},
+
+  // Central Bagmati & Narayani
+  {code:'NARA1', name:'NARAYANGARH', district:'CHITWAN', label:'NARAYANGARH - CHITWAN'},
+  {code:'BHAR1', name:'BHARATPUR', district:'CHITWAN', label:'BHARATPUR - CHITWAN'},
+  {code:'HETA1', name:'HETAUDA', district:'MAKWANPUR', label:'HETAUDA - MAKWANPUR'},
+  {code:'BIRG1', name:'BIRGUNJ', district:'PARSA', label:'BIRGUNJ - PARSA'},
+  {code:'KALA2', name:'KALAIYA', district:'BARA', label:'KALAIYA - BARA'},
+  {code:'GAUR1', name:'GAUR', district:'RAUTAHAT', label:'GAUR - RAUTAHAT'},
+  {code:'MALA1', name:'MALANGWA', district:'SARLAHI', label:'MALANGWA - SARLAHI'},
+  {code:'BANE1', name:'BANEPA', district:'KAVRE', label:'BANEPA - KAVRE'},
+  {code:'DHUL1', name:'DHULIKHEL', district:'KAVRE', label:'DHULIKHEL - KAVRE'},
+  {code:'TRIS1', name:'TRISHULI', district:'NUWAKOT', label:'TRISHULI - NUWAKOT'},
+  {code:'CHAR1', name:'CHARIKOT', district:'DOLAKHA', label:'CHARIKOT - DOLAKHA'},
+  {code:'SIND1', name:'SINDHULIMADI', district:'SINDHULI', label:'SINDHULIMADI - SINDHULI'},
+
+  // Lumbini Region
+  {code:'BUTW1', name:'BUTWAL', district:'RUPANDEHI', label:'BUTWAL - RUPANDEHI'},
+  {code:'BHAI1', name:'BHAIRAHAWA', district:'RUPANDEHI', label:'BHAIRAHAWA - RUPANDEHI'},
+  {code:'TANS1', name:'TANSEN', district:'PALPA', label:'TANSEN - PALPA'},
+  {code:'GHOR1', name:'GHORAHI', district:'DANG', label:'GHORAHI - DANG'},
+  {code:'TULS1', name:'TULSIPUR', district:'DANG', label:'TULSIPUR - DANG'},
+  {code:'NEPA1', name:'NEPALGUNJ', district:'BANKE', label:'NEPALGUNJ - BANKE'},
+  {code:'KOHA1', name:'KOHALPUR', district:'BANKE', label:'KOHALPUR - BANKE'},
+  {code:'TAMG1', name:'TAMGHAS', district:'GULMI', label:'TAMGHAS - GULMI'},
+  {code:'TAUL1', name:'TAULIHAWA', district:'KAPILVASTU', label:'TAULIHAWA - KAPILVASTU'},
+  {code:'GULA1', name:'GULARIYA', district:'BARDITYA', label:'GULARIYA - BARDITYA'},
+  {code:'SAND1', name:'SANDHIKHARKA', district:'ARGHAKHANCHI', label:'SANDHIKHARKA - ARGHAKHANCHI'},
+
+  // Eastern Koshi & Madhesh
+  {code:'BIRA1', name:'BIRATNAGAR', district:'MORANG', label:'BIRATNAGAR - MORANG'},
+  {code:'ITAH1', name:'ITAHARI', district:'SUNSARI', label:'ITAHARI - SUNSARI'},
+  {code:'DHAR1', name:'DHARAN', district:'SUNSARI', label:'DHARAN - SUNSARI'},
+  {code:'INAR1', name:'INARUWA', district:'SUNSARI', label:'INARUWA - SUNSARI'},
+  {code:'DAMA2', name:'DAMAK', district:'JHAPA', label:'DAMAK - JHAPA'},
+  {code:'BIRT1', name:'BIRTAMODE', district:'JHAPA', label:'BIRTAMODE - JHAPA'},
+  {code:'BHAD1', name:'BHADRAPUR', district:'JHAPA', label:'BHADRAPUR - JHAPA'},
+  {code:'KAKA1', name:'KAKARVITTA', district:'JHAPA', label:'KAKARVITTA - JHAPA'},
+  {code:'ILAM1', name:'ILAM', district:'ILAM', label:'ILAM - ILAM'},
+  {code:'PHID1', name:'PHIDIM', district:'PANCHTHAR', label:'PHIDIM - PANCHTHAR'},
+  {code:'JANA1', name:'JANAKPUR', district:'DHANUSHA', label:'JANAKPUR - DHANUSHA'},
+  {code:'JALE1', name:'JALESSHWAR', district:'MAHOTTARI', label:'JALESSHWAR - MAHOTTARI'},
+  {code:'LALB1', name:'LALBANDI', district:'SARLAHI', label:'LALBANDI - SARLAHI'},
+  {code:'BARD1', name:'BARDIBAS', district:'MAHOTTARI', label:'BARDIBAS - MAHOTTARI'},
+  {code:'LAHA1', name:'LAHAN', district:'SIRAHA', label:'LAHAN - SIRAHA'},
+  {code:'SIRA1', name:'SIRAHA', district:'SIRAHA', label:'SIRAHA - SIRAHA'},
+  {code:'RAJB1', name:'RAJBIRAJ', district:'SAPTARI', label:'RAJBIRAJ - SAPTARI'},
+  {code:'DHAN1', name:'DHANKUTA', district:'DHANKUTA', label:'DHANKUTA - DHANKUTA'},
+  {code:'GAIG1', name:'GAIGHAT', district:'UDAYAPUR', label:'GAIGHAT - UDAYAPUR'},
+
+  // Sudurpaschim & Karnali Region
+  {code:'DHAN2', name:'DHANGADI', district:'KAILALI', label:'DHANGADI - KAILALI'},
+  {code:'TIKA1', name:'TIKAPUR', district:'KAILALI', label:'TIKAPUR - KAILALI'},
+  {code:'MAHE1', name:'MAHENDRANAGAR', district:'KANCHANPUR', label:'MAHENDRANAGAR - KANCHANPUR'},
+  {code:'DADE1', name:'DADELDHURA', district:'DADELDHURA', label:'DADELDHURA - DADELDHURA'},
+  {code:'SURK1', name:'SURKHET', district:'SURKHET', label:'SURKHET - SURKHET'},
+  {code:'DAIL1', name:'DAILEKH', district:'DAILEKH', label:'DAILEKH - DAILEKH'},
+  {code:'SALY1', name:'SALYAN', district:'SALYAN', label:'SALYAN - SALYAN'},
+  {code:'SILG1', name:'SILGADI', district:'DOTI', label:'SILGADI - DOTI'}
 ];
 
 let NCM_FINANCE_DATA = {
