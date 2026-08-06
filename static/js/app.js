@@ -2702,7 +2702,7 @@ function renderShipments(){
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
         
         <!-- Preset Date Filters -->
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-right:4px;">Shipment Date:</span>
           <button class="btn ${tf==='all'?'btn-primary':'btn-secondary'} btn-sm" onclick="setShipmentTimeframe('all')">All Time</button>
           <button class="btn ${tf==='today'?'btn-primary':'btn-secondary'} btn-sm" onclick="setShipmentTimeframe('today')">Today</button>
@@ -2710,16 +2710,16 @@ function renderShipments(){
           <button class="btn ${tf==='month'?'btn-primary':'btn-secondary'} btn-sm" onclick="setShipmentTimeframe('month')">This Month</button>
         </div>
 
-        <!-- Custom Date Pickers -->
-        <div style="display:flex;align-items:center;gap:8px;">
+        <!-- Custom Date Pickers (Responsive) -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">
           <span style="font-size:12px;font-weight:600;color:var(--ink-faint);">Custom Range:</span>
-          <input type="date" id="shipStartDate" value="${STATE.shipmentStartDate}" onchange="updateShipmentCustomDates()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+          <input type="date" id="shipStartDate" value="${STATE.shipmentStartDate}" onchange="updateShipmentCustomDates()" style="padding:5px 6px;font-size:11.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);max-width:125px;box-sizing:border-box;">
           <span style="font-size:12px;color:var(--ink-faint);">to</span>
-          <input type="date" id="shipEndDate" value="${STATE.shipmentEndDate}" onchange="updateShipmentCustomDates()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+          <input type="date" id="shipEndDate" value="${STATE.shipmentEndDate}" onchange="updateShipmentCustomDates()" style="padding:5px 6px;font-size:11.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);max-width:125px;box-sizing:border-box;">
         </div>
 
         <!-- Status Filter -->
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span style="font-size:12px;font-weight:700;color:var(--ink-soft);">Courier Status:</span>
           <select onchange="setShipmentStatusFilter(this.value)" style="padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
             <option value="all" ${stFilter==='all'?'selected':''}>All Statuses</option>
@@ -4013,7 +4013,7 @@ function renderReports(){
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
         
         <!-- Preset Date Filters -->
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-right:4px;">Timeframe:</span>
           <button class="btn ${tf==='today'?'btn-primary':'btn-secondary'} btn-sm" onclick="setReportTimeframe('today')">Today</button>
           <button class="btn ${tf==='week'?'btn-primary':'btn-secondary'} btn-sm" onclick="setReportTimeframe('week')">This Week</button>
@@ -4021,16 +4021,16 @@ function renderReports(){
           <button class="btn ${tf==='year'?'btn-primary':'btn-secondary'} btn-sm" onclick="setReportTimeframe('year')">This Year</button>
         </div>
 
-        <!-- Custom Date Range Pickers -->
-        <div style="display:flex;align-items:center;gap:8px;">
+        <!-- Custom Date Range Pickers (Responsive) -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">
           <span style="font-size:12px;font-weight:600;color:var(--ink-faint);">Date Range:</span>
-          <input type="date" id="repStartDate" value="${STATE.reportStartDate}" onchange="updateReportCustomDates()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+          <input type="date" id="repStartDate" value="${STATE.reportStartDate}" onchange="updateReportCustomDates()" style="padding:5px 6px;font-size:11.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);max-width:125px;box-sizing:border-box;">
           <span style="font-size:12px;color:var(--ink-faint);">to</span>
-          <input type="date" id="repEndDate" value="${STATE.reportEndDate}" onchange="updateReportCustomDates()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+          <input type="date" id="repEndDate" value="${STATE.reportEndDate}" onchange="updateReportCustomDates()" style="padding:5px 6px;font-size:11.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);max-width:125px;box-sizing:border-box;">
         </div>
 
         <!-- Category Filter -->
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span style="font-size:12px;font-weight:700;color:var(--ink-soft);">Category:</span>
           <select onchange="setReportCategory(this.value)" style="padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
             <option value="all" ${STATE.reportCategory==='all'?'selected':''}>All Categories</option>
