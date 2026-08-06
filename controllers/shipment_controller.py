@@ -88,6 +88,7 @@ def create_ncm_shipment():
     tracking_number = ncm_res.get('tracking_number') or f"NCM-{ncm_res.get('orderid', '88100')}"
     
     # 2. Update SQL Database Shipment and Order Status
+    requested_status = data.get('status', 'in-transit')
     if not shipment:
         shipment = Shipment(
             order_id=order_id, 
@@ -99,13 +100,13 @@ def create_ncm_shipment():
             fbranch=from_branch,
             package_desc=package_desc,
             cod=float(cod_amount),
-            status='in-transit', 
+            status=requested_status, 
             created='2026-07-28'
         )
         db.session.add(shipment)
     else:
         shipment.ncm_tracking = tracking_number
-        shipment.status = 'in-transit'
+        shipment.status = requested_status
         shipment.phone = phone
         shipment.address = address
         shipment.fbranch = from_branch
@@ -114,7 +115,10 @@ def create_ncm_shipment():
         if destination_branch: shipment.dest = destination_branch
     
     if order:
-        order.status = 'shipped'
+        if requested_status == 'confirmed':
+            order.status = 'confirmed'
+        else:
+            order.status = 'shipped'
         
     db.session.commit()
     

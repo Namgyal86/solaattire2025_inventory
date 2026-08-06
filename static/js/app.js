@@ -1571,7 +1571,7 @@ async function submitOrder(){
       items: STATE.pendingOrderItems.map(i=>({name:i.name, variant:i.variant, qty:i.qty, price:i.lineTotal}))
     };
 
-    // 1. Save Order to SQLite DB
+    // 1. Save Order to SQLite DB with status='confirmed'
     const res = await fetch('/api/orders', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -1582,7 +1582,49 @@ async function submitOrder(){
       const orderData = await res.json();
       const createdOrderId = (orderData.order && orderData.order.id) ? orderData.order.id : (orderData.id || 'ORD-NEW');
 
-      toast(`Order ${createdOrderId} created successfully! Status: Confirmed`);
+      // 2. Call NCM API (POST /api/v1/order/create) to generate official NCM Order ID while keeping status as confirmed
+      let ncmWaybill = '';
+      if(medium === 'ncm'){
+        const phone2El = document.getElementById('co_phone2');
+        const fbranchEl = document.getElementById('co_fbranch_val');
+        const deliveryTypeEl = document.getElementById('co_delivery_type');
+        const instructionEl = document.getElementById('co_instruction');
+        const codInput = document.getElementById('co_cod_charge');
+
+        const packageDesc = STATE.pendingOrderItems.map(i=>`${i.qty}x ${i.name}`).join(', ');
+        const finalCod = (codInput && codInput.value !== '') ? parseFloat(codInput.value) : calculatedTotal;
+
+        const ncmPayload = {
+          orderId: createdOrderId,
+          status: 'confirmed',
+          name: customerName,
+          phone: phone,
+          phone2: phone2El ? phone2El.value : '',
+          cod_charge: finalCod,
+          address: address,
+          fbranch: fbranchEl ? fbranchEl.value : 'TINKUNE',
+          branch: branch,
+          delivery_type: deliveryTypeEl ? deliveryTypeEl.value : 'Door2Door',
+          weight: '1',
+          package: packageDesc,
+          vref_id: createdOrderId,
+          instruction: instructionEl ? instructionEl.value : 'Call recipient before delivery'
+        };
+
+        try {
+          const ncmRes = await fetch('/api/shipments/ncm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ncmPayload)
+          });
+          const ncmData = await ncmRes.json();
+          ncmWaybill = ncmData.shipment ? ncmData.shipment.ncm : '';
+        } catch (e) {
+          console.error('NCM Order ID generation error:', e);
+        }
+      }
+
+      toast(ncmWaybill ? `Order ${createdOrderId} created! NCM Waybill: ${ncmWaybill} (Status: Confirmed)` : `Order ${createdOrderId} created! Status: Confirmed`);
 
       STATE.pendingOrderItems = [];
       closePanel();
@@ -2949,6 +2991,7 @@ async function submitNCMShipmentModal(orderId){
 
   const payload = {
     orderId: orderId,
+    status: 'in-transit',
     name: document.getElementById('ncmName').value,
     phone: document.getElementById('ncmPhone').value,
     phone2: document.getElementById('ncmPhone2').value,
@@ -2972,7 +3015,7 @@ async function submitNCMShipmentModal(orderId){
   const data = await res.json();
   if(data.shipment){
     closeModal();
-    toast(`NCM Shipment Created! Tracking: ${data.shipment.ncm}`);
+    toast(`🚚 Order ${orderId} dispatched via NCM Courier! Tracking: ${data.shipment.ncm}`);
     await fetchAllData();
   }
 }
