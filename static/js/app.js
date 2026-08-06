@@ -1704,7 +1704,7 @@ async function markOrderPacked(oid){
   });
 
   if(res.ok){
-    toast(`📦 Package for ${oid} is packed! Now ready to send to NCM.`);
+    toast(`📦 Order ${oid} marked as Packed! Ready for courier dispatch.`);
     await fetchAllData();
   }
 }
@@ -1718,7 +1718,7 @@ async function dispatchOrderToNCM(oid){
   });
 
   if(res.ok){
-    toast(`🚚 Order ${oid} marked as Dispatched to NCM! Live NCM tracking active.`);
+    toast(`🚚 Order ${oid} confirmed as Dispatched from our side!`);
     await fetchAllData();
   }
 }
@@ -1793,7 +1793,7 @@ function renderOrders(){
     if (o.status === 'pending' || o.status === 'confirmed') {
       actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markOrderPacked('${o.id}')" style="padding:4px 8px;font-size:11px;">📦 Mark Packed</button>`;
     } else if (o.status === 'packed') {
-      actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();dispatchOrderToNCM('${o.id}')" style="padding:4px 8px;font-size:11px;background:linear-gradient(135deg, #25d366 0%, #128c7e 100%);">🚚 Send to NCM</button>`;
+      actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();dispatchOrderToNCM('${o.id}')" style="padding:4px 8px;font-size:11px;background:linear-gradient(135deg, #25d366 0%, #128c7e 100%);">🚚 Mark Dispatched</button>`;
     } else {
       actionBtn = `<span class="td-sub" style="font-size:11.5px;">—</span>`;
     }
