@@ -1710,6 +1710,20 @@ async function markOrderPacked(oid){
 }
 window.markOrderPacked = markOrderPacked;
 
+async function dispatchOrderToNCM(oid){
+  const res = await fetch(`/api/orders/${oid}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'shipped' })
+  });
+
+  if(res.ok){
+    toast(`🚚 Order ${oid} marked as Dispatched to NCM! Live NCM tracking active.`);
+    await fetchAllData();
+  }
+}
+window.dispatchOrderToNCM = dispatchOrderToNCM;
+
 async function toggleOrderPackedFromChat(oid, isChecked){
   const newStatus = isChecked ? 'packed' : 'confirmed';
   const res = await fetch(`/api/orders/${oid}/status`, {
@@ -1779,7 +1793,7 @@ function renderOrders(){
     if (o.status === 'pending' || o.status === 'confirmed') {
       actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markOrderPacked('${o.id}')" style="padding:4px 8px;font-size:11px;">📦 Mark Packed</button>`;
     } else if (o.status === 'packed') {
-      actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openNCMShipmentModal('${o.id}')" style="padding:4px 8px;font-size:11px;background:linear-gradient(135deg, #25d366 0%, #128c7e 100%);">🚚 Send to NCM</button>`;
+      actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();dispatchOrderToNCM('${o.id}')" style="padding:4px 8px;font-size:11px;background:linear-gradient(135deg, #25d366 0%, #128c7e 100%);">🚚 Send to NCM</button>`;
     } else {
       actionBtn = `<span class="td-sub" style="font-size:11.5px;">—</span>`;
     }
@@ -1930,7 +1944,7 @@ function renderOrderDetail(){
           <div style="font-weight:800;font-size:14px;color:#128c7e;">🚚 Step 2: Package Packed &amp; Ready for Courier Dispatch!</div>
           <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Package is packed and sealed. You can now dispatch it directly to Nepal Can Move (NCM API)</div>
         </div>
-        <button class="btn btn-primary" onclick="openNCMShipmentModal('${o.id}')" style="background:linear-gradient(135deg, #25d366 0%, #128c7e 100%);">${icon('truck')} 🚚 Dispatch via NCM API</button>
+        <button class="btn btn-primary" onclick="dispatchOrderToNCM('${o.id}')" style="background:linear-gradient(135deg, #25d366 0%, #128c7e 100%);">${icon('truck')} 🚚 Confirm Send to NCM</button>
       </div>`;
   }
 
