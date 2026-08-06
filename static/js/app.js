@@ -1087,7 +1087,27 @@ if(!STATE.orderDispatchMedium) STATE.orderDispatchMedium = 'ncm';
 
 function setOrderDispatchMedium(medium){
   STATE.orderDispatchMedium = medium;
-  renderCreateOrderPanel();
+  const ncmBtn = document.getElementById('co_btn_ncm');
+  const localBtn = document.getElementById('co_btn_local');
+  const ncmExtra = document.getElementById('co_ncm_extra_fields');
+
+  if (ncmBtn && localBtn) {
+    if (medium === 'ncm') {
+      ncmBtn.className = 'btn btn-primary';
+      localBtn.className = 'btn btn-secondary';
+    } else {
+      ncmBtn.className = 'btn btn-secondary';
+      localBtn.className = 'btn btn-primary';
+    }
+  }
+
+  if (ncmExtra) {
+    if (medium === 'ncm') {
+      ncmExtra.style.display = 'block';
+    } else {
+      ncmExtra.style.display = 'none';
+    }
+  }
 }
 window.setOrderDispatchMedium = setOrderDispatchMedium;
 
@@ -1159,32 +1179,33 @@ function renderCreateOrderPanel(){
         <div class="section-sub" style="margin-bottom:8px;">Choose whether to dispatch via NCM API or local delivery</div>
         
         <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <button type="button" class="btn ${medium==='ncm'?'btn-primary':'btn-secondary'}" onclick="setOrderDispatchMedium('ncm')" style="flex:1;justify-content:center;font-size:12.5px;">
+          <button type="button" id="co_btn_ncm" class="btn ${medium==='ncm'?'btn-primary':'btn-secondary'}" onclick="setOrderDispatchMedium('ncm')" style="flex:1;justify-content:center;font-size:12.5px;transition:all 0.2s ease;">
             🚚 NCM Courier API
           </button>
-          <button type="button" class="btn ${medium==='local'?'btn-primary':'btn-secondary'}" onclick="setOrderDispatchMedium('local')" style="flex:1;justify-content:center;font-size:12.5px;">
+          <button type="button" id="co_btn_local" class="btn ${medium==='local'?'btn-primary':'btn-secondary'}" onclick="setOrderDispatchMedium('local')" style="flex:1;justify-content:center;font-size:12.5px;transition:all 0.2s ease;">
             📦 Local / Self Pickup / Other
           </button>
         </div>
 
-        ${medium === 'ncm' ? `
-          <!-- NCM Specific Fields -->
-          <div class="field-row">
-            <div class="field">
-              <label>Primary Phone (phone) *</label>
-              <input id="co_phone" value="9847023226" placeholder="e.g. 9847023226">
-            </div>
-            <div class="field">
-              <label>Secondary Phone (phone2)</label>
-              <input id="co_phone2" value="" placeholder="e.g. 9801234567">
-            </div>
-          </div>
-
+        <!-- Common Phone & Address Fields (Always present, zero flicker) -->
+        <div class="field-row">
           <div class="field">
-            <label>Delivery Address / Landmark (address) *</label>
-            <input id="co_address" value="Kathmandu, Ward 4" placeholder="e.g. Lakeside Ward 6, Pokhara">
+            <label>Primary Phone (phone) *</label>
+            <input id="co_phone" value="9847023226" placeholder="e.g. 9847023226">
           </div>
+          <div class="field">
+            <label>Secondary Phone (phone2)</label>
+            <input id="co_phone2" value="" placeholder="e.g. 9801234567">
+          </div>
+        </div>
 
+        <div class="field">
+          <label>Delivery Address / Landmark (address) *</label>
+          <input id="co_address" value="Kathmandu, Ward 4" placeholder="e.g. Lakeside Ward 6, Pokhara">
+        </div>
+
+        <!-- NCM Specific Extra Branch & Dispatch Fields (Smooth toggle) -->
+        <div id="co_ncm_extra_fields" style="display:${medium==='ncm'?'block':'none'};transition:all 0.2s ease;">
           <div class="field-row">
             <div class="field">
               <label>Destination Branch (branch) *</label>
@@ -1200,10 +1221,10 @@ function renderCreateOrderPanel(){
             <div class="field">
               <label>Delivery Type (delivery_type)</label>
               <select id="co_delivery_type">
-                <option value="Door2Door" selected>Door2Door (Pickup & Delivery)</option>
+                <option value="Door2Door" selected>Door2Door (Pickup &amp; Delivery)</option>
                 <option value="Branch2Door">Branch2Door (Sender drops at branch)</option>
                 <option value="Door2Branch">Door2Branch (Collect at branch)</option>
-                <option value="Branch2Branch">Branch2Branch (Branch drop & collect)</option>
+                <option value="Branch2Branch">Branch2Branch (Branch drop &amp; collect)</option>
               </select>
             </div>
             <div class="field">
@@ -1218,29 +1239,7 @@ function renderCreateOrderPanel(){
               Auto-Dispatch via NCM Courier API upon creation
             </label>
           </div>
-        ` : `
-          <!-- Local / Other Medium Fields -->
-          <div class="field-row">
-            <div class="field">
-              <label>Customer Phone *</label>
-              <input id="co_phone" value="9847023226" placeholder="e.g. 9847023226">
-            </div>
-            <div class="field">
-              <label>Delivery Medium</label>
-              <input id="co_local_medium" value="Pathao / InDrive Rider" placeholder="e.g. Self Pickup, Pathao, Rider">
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Delivery Address / Street *</label>
-            <input id="co_address" value="Kathmandu, Ward 4" placeholder="e.g. New Road, Kathmandu">
-          </div>
-
-          <div class="field">
-            <label>Delivery Notes / Special Instructions</label>
-            <input id="co_instruction" value="Deliver in evening" placeholder="e.g. Leave at reception">
-          </div>
-        `}
+        </div>
 
         <div class="field-row" style="margin-top:10px;">
           <div class="field">
