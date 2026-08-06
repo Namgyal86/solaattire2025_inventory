@@ -1543,7 +1543,7 @@ async function submitOrder(){
 
     const targetConv = STATE.pendingOrderConv || CONVERSATIONS.find(c => c.id === STATE.activeConvId);
 
-    const customerName = (custEl && custEl.value && custEl.value.trim() !== '') ? custEl.value.trim() : (targetConv ? targetConv.name : 'Walk-in Customer');
+    const customerName = (custEl && custEl.value && custEl.value.trim() !== '') ? custEl.value.trim() : (targetConv ? targetConv.name : 'Online Customer');
     const handle = (handleEl && handleEl.value && handleEl.value.trim() !== '') ? handleEl.value.trim() : (targetConv ? targetConv.handle : '@customer');
     const phone = (phoneEl && phoneEl.value && phoneEl.value.trim() !== '') ? phoneEl.value.trim() : '9847023226';
     const address = (addressEl && addressEl.value && addressEl.value.trim() !== '') ? addressEl.value.trim() : 'Kathmandu, Ward 4';
