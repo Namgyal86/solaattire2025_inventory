@@ -1583,6 +1583,7 @@ async function submitOrder(){
       phone: phone,
       address: address,
       destination: branch,
+      status: 'confirmed',
       offer: discount > 0 ? {name:'Applied offer', amount:discount} : null,
       total: calculatedTotal,
       date: new Date().toISOString().replace('T', ' ').slice(0, 16),
@@ -1628,7 +1629,7 @@ async function submitOrder(){
         const waybill = ncmData.shipment ? ncmData.shipment.ncm : 'NCM-DISPATCHED';
         toast(`Order ${createdOrderId} created & NCM Dispatched (${waybill})!`);
       } else {
-        toast(`Order ${createdOrderId} created successfully (${medium==='ncm'?'Pending NCM':'Local Order'})`);
+        toast(`Order ${createdOrderId} created! Status: Confirmed (Awaiting Packing)`);
       }
 
       STATE.pendingOrderItems = [];

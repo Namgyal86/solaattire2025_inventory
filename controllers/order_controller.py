@@ -42,7 +42,7 @@ def create_order():
         handle=data.get('handle', '@customer'),
         offer_name=offer_name,
         offer_amount=offer_amount,
-        status='pending',
+        status=data.get('status', 'confirmed'),
         date=order_datetime,
         total=float(data.get('total', 0))
     )
