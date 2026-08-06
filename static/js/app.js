@@ -1865,7 +1865,7 @@ function renderOrders(){
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
         
         <!-- Preset Date Filters -->
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-right:4px;">Date Filter:</span>
           <button class="btn ${tf==='all'?'btn-primary':'btn-secondary'} btn-sm" onclick="setOrderTimeframe('all')">All Time</button>
           <button class="btn ${tf==='today'?'btn-primary':'btn-secondary'} btn-sm" onclick="setOrderTimeframe('today')">Today</button>
@@ -1873,16 +1873,16 @@ function renderOrders(){
           <button class="btn ${tf==='month'?'btn-primary':'btn-secondary'} btn-sm" onclick="setOrderTimeframe('month')">This Month</button>
         </div>
 
-        <!-- Custom Date Pickers -->
-        <div style="display:flex;align-items:center;gap:8px;">
+        <!-- Custom Date Pickers (Responsive) -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;">
           <span style="font-size:12px;font-weight:600;color:var(--ink-faint);">Custom Range:</span>
-          <input type="date" id="ordStartDate" value="${STATE.orderStartDate}" onchange="updateOrderCustomDates()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+          <input type="date" id="ordStartDate" value="${STATE.orderStartDate}" onchange="updateOrderCustomDates()" style="padding:5px 6px;font-size:11.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);max-width:125px;box-sizing:border-box;">
           <span style="font-size:12px;color:var(--ink-faint);">to</span>
-          <input type="date" id="ordEndDate" value="${STATE.orderEndDate}" onchange="updateOrderCustomDates()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+          <input type="date" id="ordEndDate" value="${STATE.orderEndDate}" onchange="updateOrderCustomDates()" style="padding:5px 6px;font-size:11.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);max-width:125px;box-sizing:border-box;">
         </div>
 
         <!-- Status Filter -->
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span style="font-size:12px;font-weight:700;color:var(--ink-soft);">Status:</span>
           <select onchange="setOrderStatusFilter(this.value)" style="padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
             <option value="all" ${stFilter==='all'?'selected':''}>All Statuses</option>
