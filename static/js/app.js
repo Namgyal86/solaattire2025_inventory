@@ -3435,7 +3435,6 @@ async function updateLeaveStatus(lid, status){
 window.updateLeaveStatus = updateLeaveStatus;
 
 async function deleteLeaveRequest(lid){
-  if(!confirm("Delete this leave request record?")) return;
   const res = await fetch(`/api/leave-requests/${lid}`, { method: 'DELETE' });
   if(res.ok){
     toast("Leave request record deleted!");
@@ -3718,15 +3717,14 @@ async function submitEditPermissions(userId){
 window.submitEditPermissions = submitEditPermissions;
 
 async function deleteUserAccount(userId){
-  if(!confirm('Are you sure you want to delete this employee account?')) return;
   const res = await fetch(`/api/auth/users/${userId}`, { method: 'DELETE' });
   const data = await res.json();
   if(data.success){
-    toast('Employee account deleted');
+    toast('Employee account deleted!');
     await fetchAllData();
     renderAll();
   } else {
-    toast(data.error || 'Could not delete user');
+    toast(data.error || 'Could not delete user', 'error');
   }
 }
 window.deleteUserAccount = deleteUserAccount;
