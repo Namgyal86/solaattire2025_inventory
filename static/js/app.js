@@ -1412,10 +1412,18 @@ function renderCreateOrderPanel(){
           </div>
         </div>
 
-        <!-- Product Selection -->
+        <!-- Product Selection with Search Filter -->
         <div class="section-title" style="margin-top:18px;">3. Select Products</div>
-        <div class="section-sub">Select variant &amp; quantity directly below</div>
-        ${rows}
+        <div class="section-sub" style="margin-bottom:8px;">Search product name, SKU or category to quickly filter items</div>
+        
+        <div class="search-box" style="width:100%;margin-bottom:12px;background:var(--bg);border:1px solid var(--border-soft);padding:6px 12px;border-radius:8px;display:flex;align-items:center;gap:8px;">
+          ${icon('search')}
+          <input id="co_product_search" oninput="filterOrderProducts(this.value)" placeholder="Search products by name, SKU (e.g. Hoodie, Denim, TS-HD-014)..." style="border:none;outline:none;background:transparent;font-size:12.5px;width:100%;color:var(--ink);">
+        </div>
+
+        <div id="co_product_list_wrap">
+          ${rows}
+        </div>
         
         <div id="co_order_summary_wrap">
           ${STATE.pendingOrderItems.length ? `
@@ -1433,6 +1441,37 @@ function renderCreateOrderPanel(){
       </div>
     </div>`;
 }
+
+function filterOrderProducts(query){
+  const q = (query || '').toLowerCase().trim();
+  const pickRows = document.querySelectorAll('#co_product_list_wrap .pick-row');
+  let visibleCount = 0;
+  pickRows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    if (!q || text.includes(q)) {
+      row.style.display = 'flex';
+      visibleCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  
+  let noMatchEl = document.getElementById('co_no_product_match');
+  if (visibleCount === 0) {
+    if (!noMatchEl) {
+      noMatchEl = document.createElement('div');
+      noMatchEl.id = 'co_no_product_match';
+      noMatchEl.style.cssText = 'padding:16px;text-align:center;color:var(--ink-faint);font-size:12.5px;background:var(--bg);border-radius:8px;';
+      const wrap = document.getElementById('co_product_list_wrap');
+      if (wrap) wrap.appendChild(noMatchEl);
+    }
+    noMatchEl.textContent = `No products found matching "${query}"`;
+    noMatchEl.style.display = 'block';
+  } else if (noMatchEl) {
+    noMatchEl.style.display = 'none';
+  }
+}
+window.filterOrderProducts = filterOrderProducts;
 
 function toggleAdvancePayment(isPaid, calcTotal){
   const codInput = document.getElementById('co_cod_charge');
