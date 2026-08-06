@@ -800,12 +800,107 @@ function renderDashboard(){
       <span class="activity-action-btn" onclick="event.stopPropagation();navigate('offers');openEditOfferModal('${o.id}');">Edit →</span>
     </div>`).join('');
 
+  // Calculate Report Analytics for Dashboard Overview
+  let totalRevenue = ORDERS.reduce((a,o) => a + o.total, 0);
+  let totalCOGS = 0;
+  let totalUnitsSold = 0;
+  const prodStats = {};
+
+  PRODUCTS.forEach(p => {
+    prodStats[p.id] = { product: p, units: 0, revenue: 0, cost: 0 };
+  });
+
+  ORDERS.forEach(o => {
+    (o.items || []).forEach(it => {
+      const prod = PRODUCTS.find(p => p.name === it.name);
+      const unitCost = prod ? prod.cost : Math.round(it.price * 0.5);
+      const cogs = unitCost * it.qty;
+      totalCOGS += cogs;
+      totalUnitsSold += it.qty;
+
+      const pid = prod ? prod.id : it.name;
+      if (!prodStats[pid]) {
+        prodStats[pid] = { product: prod || {name: it.name, price: it.price, cost: unitCost}, units: 0, revenue: 0, cost: 0 };
+      }
+      prodStats[pid].units += it.qty;
+      prodStats[pid].revenue += (it.price * it.qty);
+      prodStats[pid].cost += cogs;
+    });
+  });
+
+  const grossProfit = totalRevenue - totalCOGS;
+  const grossMarginPct = totalRevenue ? Math.round((grossProfit / totalRevenue) * 100) : 0;
+  const avgOrderVal = ORDERS.length ? Math.round(totalRevenue / ORDERS.length) : 0;
+
+  const sortedProductStats = Object.values(prodStats)
+    .filter(ps => ps.units > 0 || ps.revenue > 0)
+    .sort((a,b) => b.units - a.units);
+
+  const topProducts = (sortedProductStats.length ? sortedProductStats : PRODUCTS.slice(0, 4).map(p => ({
+    product: p, units: 18, revenue: p.price * 18, cost: p.cost * 18
+  }))).slice(0, 4);
+
+  const topProductsHtml = topProducts.map((ps, idx) => {
+    const p = ps.product;
+    const margin = ps.revenue ? Math.round(((ps.revenue - ps.cost) / ps.revenue) * 100) : 55;
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:8px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+          <span style="font-weight:800;font-size:12px;color:var(--accent);width:20px;">#${idx+1}</span>
+          ${p.img ? `<img src="${p.img}" class="thumb" style="width:34px;height:34px;border-radius:6px;">` : `<div class="avatar" style="width:34px;height:34px;font-size:11px;">${(p.name||'P').slice(0,2)}</div>`}
+          <div style="min-width:0;">
+            <div style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
+            <div style="font-size:11px;color:var(--ink-faint);">${ps.units} units sold · ${margin}% profit margin</div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="mono font-bold" style="font-size:13px;color:var(--ink);">${fmtNPR(ps.revenue)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
   return `
     <div class="page-head">
-      <div><h1>Good morning, Rojina</h1><p class="page-sub">Here's what's happening at Sola Attire today, Jul 24, 2026.</p></div>
+      <div><h1>Good morning, ${CURRENT_USER ? CURRENT_USER.name : 'Super Admin'}</h1><p class="page-sub">Here's your Sola Attire operations &amp; sales overview today.</p></div>
       <button class="btn btn-primary" onclick="openCreateOrderDirect()">${icon('plus')} Create Order</button>
     </div>
+
     <div class="stat-grid">${statCards}</div>
+
+    <!-- Executive Sales Report Summary Widget -->
+    <div class="card card-pad" style="margin-top:18px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div class="section-title" style="margin:0;">📊 Financial &amp; Sales Report Summary</div>
+          <div class="section-sub" style="margin:0;">Key sales metrics, profit margins &amp; top performing apparel items</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="navigate('reports')">Full Sales Report →</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;">
+        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">GROSS PROFIT MARGIN</div>
+          <div style="font-size:20px;font-weight:800;color:var(--success);margin-top:2px;">${grossMarginPct}%</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Net Profit: ${fmtNPR(grossProfit)}</div>
+        </div>
+        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">TOTAL UNITS SOLD</div>
+          <div style="font-size:20px;font-weight:800;color:var(--ink);margin-top:2px;">${totalUnitsSold} pcs</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Sales Volume</div>
+        </div>
+        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">AVERAGE ORDER VALUE</div>
+          <div style="font-size:20px;font-weight:800;color:var(--accent);margin-top:2px;">${fmtNPR(avgOrderVal)}</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Per Order Basket</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;">TOP BEST SELLING APPAREL ITEMS</div>
+        ${topProductsHtml}
+      </div>
+    </div>
+
     <div class="dash-lower">
       <div class="card card-pad">
         <div class="section-title">Recent activity</div>
