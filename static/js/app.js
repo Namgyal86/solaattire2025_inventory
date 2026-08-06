@@ -733,7 +733,7 @@ function renderDashboard(){
   return `
     <div class="page-head">
       <div><h1>Good morning, Rojina</h1><p class="page-sub">Here's what's happening at Sola Attire today, Jul 24, 2026.</p></div>
-      <button class="btn btn-primary" onclick="navigate('inbox')">${icon('inbox')} Go to Inbox</button>
+      <button class="btn btn-primary" onclick="openCreateOrderDirect()">${icon('plus')} Create Order</button>
     </div>
     <div class="stat-grid">${statCards}</div>
     <div class="dash-lower">
