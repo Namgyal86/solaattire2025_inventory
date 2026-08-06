@@ -829,6 +829,20 @@ table.tbl {
     font-size: 13px !important;
   }
 
+  /* Notifications Dropdown Mobile Layout */
+  .notif-dropdown {
+    position: fixed !important;
+    top: 60px !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: 75vh !important;
+    z-index: 2500 !important;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.22) !important;
+    border-radius: 12px !important;
+  }
+
   /* Grids & Cards */
   .stat-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
   .card-pad { padding: 12px !important; }
