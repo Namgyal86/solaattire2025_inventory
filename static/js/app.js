@@ -2113,13 +2113,13 @@ function renderInventory(){
         <div class="stat-label">Potential profit if all sold</div>
       </div>
     </div>
-    <div class="card">
-      <table class="tbl">
+    <div class="card" style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;">
+      <table class="tbl" style="min-width:760px;">
         <thead><tr>
           <th class="sortable" onclick="sortInv('name')">Product ${arrow('name')}</th>
           <th class="sortable" onclick="sortInv('sku')">SKU ${arrow('sku')}</th>
           <th class="sortable" onclick="sortInv('category')">Category ${arrow('category')}</th>
-          <th class="sortable" onclick="sortInv('margin')">Pricing & margin ${arrow('margin')}</th>
+          <th class="sortable" onclick="sortInv('margin')">Pricing &amp; margin ${arrow('margin')}</th>
           <th class="sortable" onclick="sortInv('nextRestock')">Stock dates ${arrow('nextRestock')}</th>
           <th class="sortable" onclick="sortInv('stock')">Stock status ${arrow('stock')}</th>
           <th></th>
