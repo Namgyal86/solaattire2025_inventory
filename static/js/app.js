@@ -1277,7 +1277,7 @@ function setOrderDispatchMedium(medium){
 window.setOrderDispatchMedium = setOrderDispatchMedium;
 
 function renderCreateOrderPanel(){
-  const conv = STATE.pendingOrderConv || {name:'Sujata Maharjan', handle:'@sujata.wears'};
+  const conv = STATE.pendingOrderConv || {name:'', handle:''};
   const medium = STATE.orderDispatchMedium || 'ncm';
 
   const rows = PRODUCTS.map(p=>{
@@ -1323,19 +1323,19 @@ function renderCreateOrderPanel(){
 
   document.getElementById('panelOverlay').innerHTML = `
     <div class="panel" style="width: 540px;">
-      <div class="panel-head"><h3 style="margin:0;font-size:16px;">Create Order &amp; Dispatch</h3><button class="close-x" onclick="closePanel()">${icon('close')}</button></div>
+      <div class="panel-head"><h3 style="margin:0;font-size:16px;">Create New Order</h3><button class="close-x" onclick="closePanel()">${icon('close')}</button></div>
       <div class="panel-body">
         
         <!-- Customer Details -->
         <div class="section-title">1. Customer Information</div>
         <div class="field-row">
           <div class="field">
-            <label>Customer Name *</label>
-            <input id="co_customer" value="${conv.name}" placeholder="e.g. Sujata Maharjan">
+            <label>Customer Full Name *</label>
+            <input id="co_customer" value="${conv.name||''}" placeholder="e.g. Sujata Maharjan">
           </div>
           <div class="field">
-            <label>Social Handle</label>
-            <input id="co_handle" value="${conv.handle || '@customer'}" placeholder="e.g. @sujata.wears">
+            <label>Social Handle / Reference</label>
+            <input id="co_handle" value="${conv.handle||''}" placeholder="e.g. @sujata.wears / Direct Call">
           </div>
         </div>
 
@@ -1397,13 +1397,6 @@ function renderCreateOrderPanel(){
               <input id="co_instruction" value="Call recipient before delivery" placeholder="Call recipient before arrival">
             </div>
           </div>
-
-          <div style="margin-top:8px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;font-weight:600;">
-              <input type="checkbox" id="co_auto_ncm" checked style="width:16px;height:16px;accent-color:var(--accent);">
-              Auto-Dispatch via NCM Courier API upon creation
-            </label>
-          </div>
         </div>
 
         <div class="field-row" style="margin-top:10px;">
@@ -1436,7 +1429,7 @@ function renderCreateOrderPanel(){
       </div>
       <div class="panel-foot">
         <button class="btn btn-secondary" onclick="closePanel()">Cancel</button>
-        <button class="btn btn-primary" id="co_submit_btn" ${STATE.pendingOrderItems.length?'':'disabled style="opacity:.5;"'} onclick="submitOrder()">${icon('check')} Create Order (${medium==='ncm'?'Dispatch NCM':'Local Order'})</button>
+        <button class="btn btn-primary" id="co_submit_btn" ${STATE.pendingOrderItems.length?'':'disabled style="opacity:.5;"'} onclick="submitOrder()">${icon('check')} Create Order</button>
       </div>
     </div>`;
 }
@@ -1545,37 +1538,25 @@ async function submitOrder(){
     const custEl = document.getElementById('co_customer');
     const handleEl = document.getElementById('co_handle');
     const phoneEl = document.getElementById('co_phone');
-    const phone2El = document.getElementById('co_phone2');
     const addressEl = document.getElementById('co_address');
     const branchEl = document.getElementById('co_branch_val');
-    const fbranchEl = document.getElementById('co_fbranch_val');
-    const deliveryTypeEl = document.getElementById('co_delivery_type');
-    const instructionEl = document.getElementById('co_instruction');
-    const autoNcmEl = document.getElementById('co_auto_ncm');
-    const codInput = document.getElementById('co_cod_charge');
 
     const targetConv = STATE.pendingOrderConv || CONVERSATIONS.find(c => c.id === STATE.activeConvId);
 
-    const customerName = (custEl && custEl.value) ? custEl.value : (targetConv ? targetConv.name : 'Customer');
-    const handle = (handleEl && handleEl.value) ? handleEl.value : (targetConv ? targetConv.handle : '@customer');
-    const phone = (phoneEl && phoneEl.value) ? phoneEl.value : '9847023226';
-    const phone2 = (phone2El && phone2El.value) ? phone2El.value : '';
-    const address = (addressEl && addressEl.value) ? addressEl.value : 'Kathmandu, Ward 4';
-    const branch = (branchEl && branchEl.value) ? branchEl.value : (medium==='ncm'?'POKHARA':'Kathmandu');
-    const fbranch = (fbranchEl && fbranchEl.value) ? fbranchEl.value : 'TINKUNE';
-    const delivery_type = (deliveryTypeEl && deliveryTypeEl.value) ? deliveryTypeEl.value : 'Door2Door';
-    const instruction = (instructionEl && instructionEl.value) ? instructionEl.value : 'Call recipient before delivery';
-    const autoNcm = autoNcmEl ? autoNcmEl.checked : false;
+    const customerName = (custEl && custEl.value && custEl.value.trim() !== '') ? custEl.value.trim() : (targetConv ? targetConv.name : 'Walk-in Customer');
+    const handle = (handleEl && handleEl.value && handleEl.value.trim() !== '') ? handleEl.value.trim() : (targetConv ? targetConv.handle : '@customer');
+    const phone = (phoneEl && phoneEl.value && phoneEl.value.trim() !== '') ? phoneEl.value.trim() : '9847023226';
+    const address = (addressEl && addressEl.value && addressEl.value.trim() !== '') ? addressEl.value.trim() : 'Kathmandu, Ward 4';
+    const branch = (branchEl && branchEl.value && branchEl.value.trim() !== '') ? branchEl.value.trim() : (medium==='ncm'?'POKHARA':'Kathmandu');
 
     if (!STATE.pendingOrderItems || STATE.pendingOrderItems.length === 0) {
-      toast('Please select at least 1 product variant to create order', 'error');
+      toast('Please add at least 1 product item to create the order', 'error');
       return;
     }
 
     const subtotal = STATE.pendingOrderItems.reduce((a,i)=>a+i.regularLineTotal,0);
     const discount = STATE.pendingOrderItems.reduce((a,i)=>a+(i.regularLineTotal-i.lineTotal),0);
     const calculatedTotal = subtotal - discount;
-    const finalCodAmount = (codInput && codInput.value !== '') ? parseFloat(codInput.value) : calculatedTotal;
 
     const payload = {
       customer: customerName,
@@ -1601,43 +1582,14 @@ async function submitOrder(){
       const orderData = await res.json();
       const createdOrderId = (orderData.order && orderData.order.id) ? orderData.order.id : (orderData.id || 'ORD-NEW');
 
-      // 2. If NCM medium and Auto-NCM is checked, create NCM Courier Shipment via NCM API
-      if(medium === 'ncm' && autoNcm){
-        const packageDesc = STATE.pendingOrderItems.map(i=>`${i.qty}x ${i.name}`).join(', ');
-        const ncmPayload = {
-          orderId: createdOrderId,
-          name: customerName,
-          phone: phone,
-          phone2: phone2,
-          cod_charge: finalCodAmount,
-          address: address,
-          fbranch: fbranch,
-          branch: branch,
-          delivery_type: delivery_type,
-          weight: '1',
-          package: packageDesc,
-          vref_id: createdOrderId,
-          instruction: instruction
-        };
-
-        const ncmRes = await fetch('/api/shipments/ncm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(ncmPayload)
-        });
-        const ncmData = await ncmRes.json();
-        const waybill = ncmData.shipment ? ncmData.shipment.ncm : 'NCM-DISPATCHED';
-        toast(`Order ${createdOrderId} created & NCM Dispatched (${waybill})!`);
-      } else {
-        toast(`Order ${createdOrderId} created! Status: Confirmed (Awaiting Packing)`);
-      }
+      toast(`Order ${createdOrderId} created successfully! Status: Confirmed`);
 
       STATE.pendingOrderItems = [];
       closePanel();
       await fetchAllData();
       navigate('orders');
     } else {
-      toast('Failed to create order. Please try again.', 'error');
+      toast('Failed to create order. Please check inputs and try again.', 'error');
     }
   } catch (err) {
     console.error('submitOrder Error:', err);
