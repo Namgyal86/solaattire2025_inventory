@@ -234,10 +234,9 @@ window.handleLoginSubmit = handleLoginSubmit;
 
 async function fetchAllData(){
   try {
-    const [pRes, oRes, cRes, offRes, sRes, eRes, lRes, bRes, fRes, uRes] = await Promise.all([
+    const [pRes, oRes, offRes, sRes, eRes, lRes, bRes, fRes, uRes] = await Promise.all([
       fetch('/api/products').then(r=>r.json()),
       fetch('/api/orders').then(r=>r.json()),
-      fetch('/api/inbox/conversations').then(r=>r.json()),
       fetch('/api/offers').then(r=>r.json()),
       fetch('/api/shipments').then(r=>r.json()),
       fetch('/api/employees').then(r=>r.json()),
@@ -249,7 +248,7 @@ async function fetchAllData(){
 
     PRODUCTS = pRes;
     ORDERS = oRes;
-    CONVERSATIONS = cRes;
+    CONVERSATIONS = [];
     OFFERS = offRes;
     SHIPMENTS = sRes;
     EMPLOYEES = eRes;
