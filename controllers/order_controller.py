@@ -21,7 +21,19 @@ def get_order(oid):
 @order_bp.route('/api/orders', methods=['POST'])
 def create_order():
     data = request.json or {}
-    oid = f"ORD-{random.randint(1043, 1099)}"
+    
+    # Calculate next guaranteed unique Order ID (e.g. ORD-1100, ORD-1101...)
+    existing_orders = Order.query.all()
+    max_num = 1099
+    for o in existing_orders:
+        if o.id and o.id.startswith('ORD-'):
+            try:
+                num = int(o.id.split('ORD-')[1])
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                pass
+    oid = f"ORD-{max_num + 1}"
     
     offer_info = data.get('offer') or {}
     offer_name = offer_info.get('name') if offer_info else None
