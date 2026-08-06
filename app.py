@@ -9,7 +9,6 @@ load_dotenv()
 from models import db
 from controllers.product_controller import product_bp
 from controllers.order_controller import order_bp
-from controllers.inbox_controller import inbox_bp
 from controllers.offer_controller import offer_bp
 from controllers.shipment_controller import shipment_bp
 from controllers.employee_controller import employee_bp
@@ -29,7 +28,6 @@ db.init_app(app)
 # Register Blueprints
 app.register_blueprint(product_bp)
 app.register_blueprint(order_bp)
-app.register_blueprint(inbox_bp)
 app.register_blueprint(offer_bp)
 app.register_blueprint(shipment_bp)
 app.register_blueprint(employee_bp)
@@ -48,23 +46,20 @@ def health():
 def global_search():
     from models.product import Product
     from models.order import Order
-    from models.inbox import Conversation
     from models.shipment import Shipment
     from flask import request
 
     q = request.args.get('q', '').strip()
     if not q:
-        return jsonify({"products": [], "orders": [], "conversations": [], "shipments": []})
+        return jsonify({"products": [], "orders": [], "shipments": []})
     
     products = Product.query.filter(Product.name.ilike(f'%{q}%') | Product.sku.ilike(f'%{q}%') | Product.category.ilike(f'%{q}%')).limit(5).all()
     orders = Order.query.filter(Order.id.ilike(f'%{q}%') | Order.customer.ilike(f'%{q}%') | Order.handle.ilike(f'%{q}%')).limit(5).all()
-    conversations = Conversation.query.filter(Conversation.name.ilike(f'%{q}%') | Conversation.handle.ilike(f'%{q}%')).limit(5).all()
     shipments = Shipment.query.filter(Shipment.order_id.ilike(f'%{q}%') | Shipment.dest.ilike(f'%{q}%')).limit(5).all()
 
     return jsonify({
         "products": [p.to_dict() for p in products],
         "orders": [o.to_dict() for o in orders],
-        "conversations": [c.to_dict() for c in conversations],
         "shipments": [s.to_dict() for s in shipments]
     })
 

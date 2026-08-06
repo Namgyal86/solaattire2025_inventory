@@ -268,8 +268,7 @@ async function fetchAllData(){
 /* ============================= NAVIGATION & LAYOUT ============================= */
 const NAV = [
   {group:'Overview', items:[{id:'dashboard', label:'Dashboard', icon:'dashboard'}]},
-  {group:'Sales', items:[
-    {id:'inbox', label:'Inbox', icon:'inbox', badge:()=>CONVERSATIONS.reduce((a,c)=>a+c.unread,0)},
+  {group:'Sales & Courier', items:[
     {id:'orders', label:'Orders', icon:'orders'},
     {id:'shipments', label:'Shipments', icon:'shipments'}
   ]},
@@ -284,10 +283,13 @@ const NAV = [
 ];
 
 const TITLES = {
-  dashboard:'Dashboard', inbox:'Inbox — Instagram & WhatsApp',
-  orders:'Orders', inventory:'Inventory',
-  offers:'Offers & Promotions', shipments:'Shipments',
-  employees:'Employees', reports:'Reports'
+  dashboard:'Dashboard — Overview & Sales',
+  orders:'Orders — Fulfillment & Packing',
+  shipments:'Shipments — Nepal Can Move Courier API',
+  inventory:'Inventory — Stock & Variant Control',
+  offers:'Offers & Promotional Campaigns',
+  employees:'Employees & Staff Roster',
+  reports:'Reports & Financial Analytics'
 };
 
 function renderSidebar(){
@@ -369,11 +371,10 @@ function toggleMobileSidebar(){
 window.toggleMobileSidebar = toggleMobileSidebar;
 
 function getUnreadNotifCount(){
-  const unreadMessages = CONVERSATIONS.reduce((a,c)=>a+c.unread,0);
   const lowStock = PRODUCTS.reduce((acc,p)=>acc+p.variants.filter(v=>v.stock<=v.reorder).length,0);
   const pendingShip = SHIPMENTS.filter(s=>s.status==='not-created').length;
   const pendingLeave = LEAVE_REQUESTS.filter(l=>l.status==='pending').length;
-  return unreadMessages + lowStock + pendingShip + pendingLeave;
+  return lowStock + pendingShip + pendingLeave;
 }
 
 function renderTopbar(){
@@ -399,7 +400,7 @@ function renderTopbar(){
       <div class="search-box-wrap">
         <div class="search-box">
           ${icon('search')}
-          <input type="text" id="globalSearchInput" placeholder="Search orders, products, chats…" oninput="handleGlobalSearch(this.value)" onfocus="handleGlobalSearch(this.value)">
+          <input type="text" id="globalSearchInput" placeholder="Search orders, products, shipments…" oninput="handleGlobalSearch(this.value)" onfocus="handleGlobalSearch(this.value)">
         </div>
         <div class="search-dropdown" id="globalSearchDropdown"></div>
       </div>
@@ -437,17 +438,10 @@ function renderMobileBottomNav(){
     return;
   }
 
-  const unreadCount = CONVERSATIONS.reduce((a,c)=>a+c.unread,0);
-
   navEl.innerHTML = `
     <a class="mobile-nav-item ${STATE.screen==='dashboard'?'active':''}" onclick="navigate('dashboard')">
       ${icon('dashboard')}
       <span>Home</span>
-    </a>
-    <a class="mobile-nav-item ${STATE.screen==='inbox'?'active':''}" onclick="navigate('inbox')">
-      ${icon('inbox')}
-      ${unreadCount > 0 ? `<span class="mobile-nav-badge">${unreadCount}</span>` : ''}
-      <span>Inbox</span>
     </a>
     <a class="mobile-nav-item ${STATE.screen==='orders'?'active':''}" onclick="navigate('orders')">
       ${icon('orders')}
@@ -457,8 +451,12 @@ function renderMobileBottomNav(){
       ${icon('shipments')}
       <span>Courier</span>
     </a>
+    <a class="mobile-nav-item ${STATE.screen==='inventory'?'active':''}" onclick="navigate('inventory')">
+      ${icon('inventory')}
+      <span>Inventory</span>
+    </a>
     <a class="mobile-nav-item" onclick="toggleMobileSidebar()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="width:19px;height:19px;"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       <span>Menu</span>
     </a>`;
 }
@@ -985,10 +983,17 @@ function filterConvs(q){
 window.filterConvs = filterConvs;
 
 /* ============================= CREATE ORDER SIDE PANEL ============================= */
-function openCreateOrder(convId){
-  const conv = CONVERSATIONS.find(c=>c.id===convId);
+function openCreateOrderDirect(){
   STATE.pendingOrderItems = [];
-  STATE.pendingOrderConv = conv;
+  STATE.pendingOrderConv = null;
+  renderCreateOrderPanel();
+  document.getElementById('panelOverlay').classList.add('show');
+}
+window.openCreateOrderDirect = openCreateOrderDirect;
+
+function openCreateOrder(convId){
+  STATE.pendingOrderItems = [];
+  STATE.pendingOrderConv = null;
   renderCreateOrderPanel();
   document.getElementById('panelOverlay').classList.add('show');
 }
@@ -1641,7 +1646,7 @@ function renderOrders(){
         <h1>Orders</h1>
         <p class="page-sub">Manage &amp; analyze order history, sales performance &amp; delivery statuses</p>
       </div>
-      <button class="btn btn-primary" onclick="navigate('inbox')">${icon('plus')} New order from Inbox</button>
+      <button class="btn btn-primary" onclick="openCreateOrderDirect()">${icon('plus')} Create New Order</button>
     </div>
 
     <!-- Filter Control Toolbar -->
