@@ -780,21 +780,65 @@ function renderDashboard(){
       </div>
     </div>`).join('');
 
-  const activity = [
-    {icon:'cart', color:'info', text:'<b>Sujata Maharjan</b> placed order ORD-1042 via Instagram DM', time:'8 minutes ago', onclick:"navigate('orders');openOrderDetail('ORD-1042');"},
-    {icon:'truck', color:'warning', text:'Shipment created for <b>ORD-1041</b> — NCM-88213 dispatched to Pokhara', time:'42 minutes ago', onclick:"navigate('shipments');"},
-    {icon:'tag', color:'accent', text:'Offer <b>"Dashain Drop — 20% Off Outerwear"</b> crossed 30 redemptions', time:'2 hours ago', onclick:"navigate('offers');"},
-    {icon:'alert', color:'danger', text:'<b>Himal Graphic Tee — L / Black</b> is now out of stock', time:'3 hours ago', onclick:"navigate('inventory');openProductModal('p4');"},
-    {icon:'check', color:'success', text:'Order <b>ORD-1040</b> marked as delivered', time:'Yesterday', onclick:"navigate('orders');openOrderDetail('ORD-1040');"},
-    {icon:'user', color:'info', text:'<b>Kritika Adhikari</b> requested sick leave for Jul 24–25', time:'Yesterday', onclick:"STATE.employeeTab='leave';navigate('employees');"},
-  ];
+  // Generate Dynamic Activity Feed from real DB objects
+  const realActivities = [];
 
-  let activityHtml = activity.map(a=>`
+  // Recent Orders
+  (ORDERS || []).slice(0, 3).forEach(o => {
+    realActivities.push({
+      icon: 'cart',
+      color: 'info',
+      text: `<b>${o.customer || 'Customer'}</b> placed order <b>${o.id}</b> (${fmtNPR(o.total)})`,
+      time: o.date || 'Recent',
+      onclick: `navigate('orders');openOrderDetail('${o.id}');`
+    });
+  });
+
+  // Recent Low-Stock Items
+  let lowCount = 0;
+  (PRODUCTS || []).forEach(p => {
+    (p.variants || []).forEach(v => {
+      if (v.stock <= v.reorder && lowCount < 2) {
+        lowCount++;
+        realActivities.push({
+          icon: 'alert',
+          color: 'danger',
+          text: `<b>${p.name} (${v.size} / ${v.color})</b> stock alert — ${v.stock} pcs left`,
+          time: 'Stock Alert',
+          onclick: `navigate('inventory');`
+        });
+      }
+    });
+  });
+
+  // Recent Expenses
+  (EXPENSES || []).slice(0, 2).forEach(e => {
+    realActivities.push({
+      icon: 'wallet',
+      color: 'warning',
+      text: `Expense recorded: <b>"${e.title}"</b> — ${fmtNPR(e.amount)} (${e.category})`,
+      time: e.date || 'Recent',
+      onclick: `navigate('expenses');`
+    });
+  });
+
+  // Recent Offers
+  (OFFERS || []).slice(0, 1).forEach(off => {
+    realActivities.push({
+      icon: 'tag',
+      color: 'accent',
+      text: `Promotional item <b>"${off.name.replace('Special Sale: ','')}"</b> reached ${fmtNPR(off.revenue)} revenue (${off.redemptions} pcs sold)`,
+      time: 'Live Campaign',
+      onclick: `navigate('offers');`
+    });
+  });
+
+  let activityHtml = realActivities.length ? realActivities.slice(0, 6).map(a=>`
     <div class="activity-item clickable" onclick="${a.onclick}">
       <div class="activity-dot" style="background:var(--${a.color==='accent'?'accent-soft':a.color+'-soft'});color:var(--${a.color==='accent'?'accent-soft-ink':a.color});">${icon(a.icon)}</div>
       <div style="flex:1;"><div class="activity-text">${a.text}</div><div class="activity-time">${a.time}</div></div>
       <span class="activity-action-btn" onclick="event.stopPropagation();${a.onclick}">View →</span>
-    </div>`).join('');
+    </div>`).join('') : '<div style="padding:20px;text-align:center;color:var(--ink-faint);">No recent activity</div>';
 
   const offerRows = OFFERS.filter(o=>o.status==='active').map(o=>`
     <div class="activity-item clickable" onclick="navigate('offers');openEditOfferModal('${o.id}');">
