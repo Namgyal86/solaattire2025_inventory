@@ -4022,32 +4022,32 @@ function renderExpenses(){
       <button class="btn btn-primary" onclick="openExpenseModal()">${icon('plus')} Add New Expense</button>
     </div>
 
-    <!-- Store Setup & Sales-Funded Outflow Grid -->
+    <!-- Total Inflow, Expenses Outflow & Available Cash Balance Grid -->
     <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
       <div class="card stat-card">
         <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('money')}</div>
         <div class="stat-value">${fmtNPR(initialCapital)}</div>
-        <div class="stat-label">Initial Store Capital (100% Invested)</div>
+        <div class="stat-label">Initial Seed Capital Sourced</div>
+      </div>
+
+      <div class="card stat-card">
+        <span class="stat-trend trend-up">Sales Inflow</span>
+        <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('orders')}</div>
+        <div class="stat-value">${fmtNPR(totalRevenue)}</div>
+        <div class="stat-label">Gross Sales Revenue Inflow</div>
       </div>
 
       <div class="card stat-card">
         <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
         <div class="stat-value">${fmtNPR(totalExpense)}</div>
-        <div class="stat-label">Total Expenses (Paid from Sales)</div>
-      </div>
-
-      <div class="card stat-card">
-        <span class="stat-trend trend-up">Sales Revenue</span>
-        <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('orders')}</div>
-        <div class="stat-value">${fmtNPR(totalRevenue)}</div>
-        <div class="stat-label">Gross Product Sales Revenue</div>
+        <div class="stat-label">Total Expenses (Setup + Running)</div>
       </div>
 
       <div class="card stat-card">
         <span class="stat-trend trend-up">Net Cash</span>
         <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('trend')}</div>
-        <div class="stat-value">${fmtNPR(totalRevenue - totalExpense)}</div>
-        <div class="stat-label">Net Sales Cash Flow (Sales - Expenses)</div>
+        <div class="stat-value">${fmtNPR(initialCapital + totalRevenue - totalExpense)}</div>
+        <div class="stat-label">Net Available Cash Balance</div>
       </div>
     </div>
 
@@ -4451,35 +4451,35 @@ function renderReports(){
     <!-- Capital Investment & Financial Ledger Overview Widget -->
     <div class="card card-pad" style="margin-bottom:18px;background:var(--bg);border:1px solid var(--border);">
       <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <span style="font-size:14px;font-weight:700;">💼 Store Setup Capital &amp; Financial Ledger</span>
-        <span class="pill pill-success" style="font-size:11.5px;font-weight:700;">Store Setup: ${fmtNPR(initialCapital)} (100% Invested)</span>
+        <span style="font-size:14px;font-weight:700;">💼 Total Cash Inflow &amp; Net Available Cash Balance</span>
+        <span class="pill pill-success" style="font-size:11.5px;font-weight:700;">Net Balance: ${fmtNPR(initialCapital + totalRevenue - totalExpenses)}</span>
       </div>
-      <div class="section-sub" style="margin-bottom:14px;">Store setup capital, gross sales revenue, sales-funded expenses &amp; net cash flow</div>
+      <div class="section-sub" style="margin-bottom:14px;">Combined seed capital + sales revenue inflow minus all setup and operational expenses</div>
       
       <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:0;">
         <div class="card stat-card" style="background:var(--surface);">
           <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('money')}</div>
           <div class="stat-value">${fmtNPR(initialCapital)}</div>
-          <div class="stat-label">Store Setup Capital (100% Invested)</div>
+          <div class="stat-label">Initial Seed Capital Sourced</div>
         </div>
 
         <div class="card stat-card" style="background:var(--surface);">
           <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('money')}</div>
           <div class="stat-value">${fmtNPR(totalRevenue)}</div>
-          <div class="stat-label">Gross Product Sales Revenue</div>
+          <div class="stat-label">Gross Sales Revenue Inflow</div>
         </div>
 
         <div class="card stat-card" style="background:var(--surface);">
           <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
           <div class="stat-value">${fmtNPR(totalExpenses)}</div>
-          <div class="stat-label">Operating Expenses (Paid from Sales)</div>
+          <div class="stat-label">Total Expenses (Setup + Running)</div>
         </div>
 
         <div class="card stat-card" style="background:var(--surface);">
           <span class="stat-trend trend-up">Net Cash</span>
           <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('trend')}</div>
-          <div class="stat-value">${fmtNPR(totalRevenue - totalExpenses)}</div>
-          <div class="stat-label">Net Sales Cash Flow (Sales - Expenses)</div>
+          <div class="stat-value">${fmtNPR(initialCapital + totalRevenue - totalExpenses)}</div>
+          <div class="stat-label">Net Available Cash Balance</div>
         </div>
       </div>
     </div>
