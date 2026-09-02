@@ -4183,12 +4183,16 @@ function renderReports(){
           `).join('') : '<div style="padding:20px;text-align:center;font-size:12px;color:var(--ink-faint);">No regional data for selected range</div>'}
         </div>
 
-        <div class="section-title" style="margin-top:24px;">Offer &amp; Promotion Impact</div>
-        <div class="section-sub">Redemptions &amp; revenue</div>
-        <table class="tbl" style="margin-top:8px;">
-          <thead><tr><th>Offer</th><th>Redemptions</th><th>Revenue</th></tr></thead>
+        <div class="section-title" style="margin-top:24px;">🏷️ (sale) Items &amp; Promotional Revenue</div>
+        <div class="section-sub">Units sold &amp; total revenue earned from promotional (sale) tagged items</div>
+        <div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:12px;font-weight:700;">Total (sale) Items Revenue:</span>
+          <span style="font-size:14px;font-weight:800;color:var(--accent);">${fmtNPR(OFFERS.reduce((a,o)=>a+(o.revenue||0),0))}</span>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>Promotional Sale Item</th><th>Units Sold</th><th>Total Earned</th></tr></thead>
           <tbody>
-            ${OFFERS.map(o=>`<tr><td><span class="price-tag">${o.name.length>24?o.name.slice(0,24)+'…':o.name}</span></td><td class="mono">${o.redemptions}</td><td class="mono">${fmtNPR(o.revenue)}</td></tr>`).join('')}
+            ${OFFERS.map(o=>`<tr><td><span class="price-tag">${o.name.replace('Special Sale: ','')}</span></td><td class="mono font-bold">${o.redemptions} pcs</td><td class="mono font-bold" style="color:var(--success);">${fmtNPR(o.revenue)}</td></tr>`).join('')}
           </tbody>
         </table>
 

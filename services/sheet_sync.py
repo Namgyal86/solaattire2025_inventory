@@ -8,6 +8,7 @@ from models import db
 from models.product import Product, Variant
 from models.order import Order, OrderItem
 from models.shipment import Shipment
+from models.offer import Offer, OfferItem
 
 SPREADSHEET_ID = "1Fvyq4FvTSp62qgIAt4H4kR9MtyKyCYUbnzF6QZyRJJw"
 CSV_EXPORT_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv"
@@ -406,6 +407,8 @@ def sync_google_sheet_data():
         return {"status": "error", "message": "No data found in Google Sheet"}
 
     # Clear existing DB
+    db.session.query(OfferItem).delete()
+    db.session.query(Offer).delete()
     db.session.query(OrderItem).delete()
     db.session.query(Order).delete()
     db.session.query(Shipment).delete()
@@ -512,6 +515,65 @@ def sync_google_sheet_data():
             )
             db.session.add(v)
             variant_map[(base_name, size, color)] = v
+
+    # 3.5 Generate Real Offers & Promotions from (sale) items
+    sale_items_summary = {}
+    for r in sheet_rows:
+        raw_item_name = r.get('ITEM NAME', '').strip()
+        if not raw_item_name or not check_is_on_sale(raw_item_name):
+            continue
+
+        order_st = r.get('ORDER \nSTATUS', r.get('ORDER STATUS', '')).strip().lower()
+        if 'cancel' in order_st or 'return' in order_st:
+            continue
+
+        raw_q = r.get('QTY \nORDERED', r.get('QTY ORDERED', '')).strip()
+        try:
+            qty = int(raw_q) if raw_q != '' else 0
+        except ValueError:
+            qty = 0
+
+        if qty <= 0:
+            continue
+
+        try:
+            unit_price = float(r.get('UNIT \nPRICE', r.get('UNIT PRICE', '0')).strip() or '0')
+        except ValueError:
+            unit_price = 0.0
+
+        tot = qty * unit_price
+        if raw_item_name not in sale_items_summary:
+            sale_items_summary[raw_item_name] = {'units': 0, 'revenue': 0.0, 'price': unit_price}
+
+        sale_items_summary[raw_item_name]['units'] += qty
+        sale_items_summary[raw_item_name]['revenue'] += tot
+
+    offer_seq = 1
+    for raw_sale_item, stats in sorted(sale_items_summary.items(), key=lambda x: x[1]['revenue'], reverse=True):
+        off_id = f"OFF-{offer_seq:03d}"
+        offer_seq += 1
+        base_name = clean_base_product_name(raw_sale_item)
+        prod = product_map.get(base_name)
+
+        offer = Offer(
+            id=off_id,
+            name=f"Special Sale: {raw_sale_item}",
+            status='active',
+            start='2026-05-01',
+            end='2026-09-30',
+            redemptions=stats['units'],
+            revenue=stats['revenue']
+        )
+        db.session.add(offer)
+
+        if prod:
+            off_item = OfferItem(
+                offer_id=off_id,
+                product_id=prod.id,
+                discount_type='flat',
+                value=round(prod.price * 0.15, 2)
+            )
+            db.session.add(off_item)
 
     db.session.commit()
 
