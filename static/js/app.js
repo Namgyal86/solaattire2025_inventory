@@ -4521,31 +4521,32 @@ function renderReports(){
       </div>
     </div>
 
-    <!-- KPI Summary Cards -->
+    <!-- Financial & Profit KPI Summary Cards -->
     <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
-      <div class="card stat-card">
+      <div class="card stat-card" style="border-left:4px solid var(--success);">
+        <span class="stat-trend trend-up">${grossMarginPct}% Gross Margin</span>
         <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('money')}</div>
-        <div class="stat-value">${fmtNPR(totalRevenue)}</div>
-        <div class="stat-label">Gross Revenue</div>
+        <div class="stat-value" style="color:var(--success);font-size:22px;font-weight:800;">${fmtNPR(grossProfit)}</div>
+        <div class="stat-label" style="font-weight:700;">PROFIT TILL NOW (GROSS)</div>
       </div>
 
-      <div class="card stat-card">
-        <span class="stat-trend trend-up">${grossMarginPct}% profit margin</span>
+      <div class="card stat-card" style="border-left:4px solid var(--accent);">
+        <span class="stat-trend trend-up">517 Orders</span>
         <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('trend')}</div>
-        <div class="stat-value">${fmtNPR(grossProfit)}</div>
-        <div class="stat-label">Gross Profit Margin</div>
+        <div class="stat-value" style="color:var(--accent);font-size:22px;font-weight:800;">${fmtNPR(totalRevenue)}</div>
+        <div class="stat-label" style="font-weight:700;">GROSS SALES REVENUE</div>
       </div>
 
-      <div class="card stat-card">
-        <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('orders')}</div>
-        <div class="stat-value">${filteredOrders.length}</div>
-        <div class="stat-label">Total Orders (Avg ${fmtNPR(avgOrderVal)})</div>
+      <div class="card stat-card" style="border-left:4px solid var(--danger);">
+        <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
+        <div class="stat-value" style="color:var(--danger);font-size:22px;font-weight:800;">${fmtNPR(totalExpenses)}</div>
+        <div class="stat-label" style="font-weight:700;">OPERATING EXPENSES</div>
       </div>
 
-      <div class="card stat-card">
-        <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);">${icon('inventory')}</div>
-        <div class="stat-value">${totalUnitsSold}</div>
-        <div class="stat-label">Units Sold</div>
+      <div class="card stat-card" style="border-left:4px solid var(--info);">
+        <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('inventory')}</div>
+        <div class="stat-value" style="color:var(--info);font-size:22px;font-weight:800;">${fmtNPR(PRODUCTS.reduce((a,p)=>a+p.variants.reduce((va,v)=>va+(v.stock*p.price),0),0))}</div>
+        <div class="stat-label" style="font-weight:700;">UNSOLD STOCK ASSET</div>
       </div>
     </div>
 
