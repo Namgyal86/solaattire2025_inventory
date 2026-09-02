@@ -918,42 +918,78 @@ function renderDashboard(){
 
     <div class="stat-grid">${statCards}</div>
 
-    <!-- Executive Sales Report Summary Widget -->
+    <!-- System Operational Models Status Grid -->
     <div class="card card-pad" style="margin-top:18px;margin-bottom:18px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div>
-          <div class="section-title" style="margin:0;">📊 Financial &amp; Sales Report Summary</div>
-          <div class="section-sub" style="margin:0;">Key sales metrics, profit margins &amp; top performing apparel items</div>
+          <div class="section-title" style="margin:0;">⚙️ System Operational Models Overview</div>
+          <div class="section-sub" style="margin:0;">Live status summary across all business operation modules</div>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="navigate('reports')">Full Sales Report →</button>
+        <button class="btn btn-secondary btn-sm" onclick="navigate('reports')">View Financial Reports →</button>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;">
-        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
-          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">PROFIT TILL NOW (GROSS)</div>
-          <div style="font-size:20px;font-weight:800;color:var(--success);margin-top:2px;">${fmtNPR(grossProfit)}</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">${grossMarginPct}% Gross Margin</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+        
+        <!-- Inventory Model -->
+        <div class="clickable" onclick="navigate('inventory');" style="padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px;">${icon('inventory')} Inventory &amp; Stock Model</div>
+            <span class="pill pill-info" style="font-size:11px;">${PRODUCTS.length} Products</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-soft);">Total Stock: <b>${PRODUCTS.reduce((a,p)=>a+p.variants.reduce((va,v)=>va+v.stock,0),0)} pcs</b></div>
+          <div style="font-size:11.5px;color:var(--danger);margin-top:2px;">Low-Stock Alerts: <b>${lowStock} items</b></div>
         </div>
-        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
-          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">GROSS SALES REVENUE</div>
-          <div style="font-size:20px;font-weight:800;color:var(--accent);margin-top:2px;">${fmtNPR(totalRevenue)}</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">517 Total Orders</div>
-        </div>
-        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
-          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">OPERATING EXPENSES</div>
-          <div style="font-size:20px;font-weight:800;color:var(--danger);margin-top:2px;">${fmtNPR(totalExpenseVal)}</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Total Outflow</div>
-        </div>
-        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
-          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">UNSOLD STOCK ASSET</div>
-          <div style="font-size:20px;font-weight:800;color:var(--info);margin-top:2px;">${fmtNPR(PRODUCTS.reduce((a,p)=>a+p.variants.reduce((va,v)=>va+(v.stock*p.price),0),0))}</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Retail Stock Asset</div>
-        </div>
-      </div>
 
-      <div>
-        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;">TOP BEST SELLING APPAREL ITEMS</div>
-        ${topProductsHtml}
+        <!-- Orders & Sales Model -->
+        <div class="clickable" onclick="navigate('orders');" style="padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px;">${icon('orders')} Sales &amp; Orders Model</div>
+            <span class="pill pill-success" style="font-size:11px;">${ORDERS.length} Orders</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-soft);">Today's Volume: <b>${todayOrders} orders</b></div>
+          <div style="font-size:11.5px;color:var(--success);margin-top:2px;">Sales Volume: <b>517 Delivered</b></div>
+        </div>
+
+        <!-- Courier & Shipments Model -->
+        <div class="clickable" onclick="navigate('shipments');" style="padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px;">${icon('truck')} Courier &amp; Logistics Model</div>
+            <span class="pill pill-warning" style="font-size:11px;">NCM API</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-soft);">Pending Shipments: <b>${pendingShip} orders</b></div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">COD Transferred: <b>Rs. 1,82,500</b></div>
+        </div>
+
+        <!-- Offers & Promotions Model -->
+        <div class="clickable" onclick="navigate('offers');" style="padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px;">${icon('tag')} Offers &amp; Promotions Model</div>
+            <span class="pill pill-accent" style="font-size:11px;">${activeOffers} Active Offers</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-soft);">Sale Units Sold: <b>14 pcs</b></div>
+          <div style="font-size:11.5px;color:var(--accent);margin-top:2px;">Sale Revenue: <b>Rs. 9,650</b></div>
+        </div>
+
+        <!-- Expenses & Outflow Model -->
+        <div class="clickable" onclick="navigate('expenses');" style="padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px;">${icon('wallet')} Expense &amp; Outflow Model</div>
+            <span class="pill pill-neutral" style="font-size:11px;">${EXPENSES.length} Expenses</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--danger);">Total Outflow: <b>${fmtNPR(totalExpenseVal)}</b></div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">Categories: <b>7 Expense Types</b></div>
+        </div>
+
+        <!-- Employees & Roster Model -->
+        <div class="clickable" onclick="navigate('employees');" style="padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px;">${icon('employees')} Employees &amp; HR Model</div>
+            <span class="pill pill-info" style="font-size:11px;">${EMPLOYEES.length} Active Staff</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-soft);">Staff Status: <b>All Active</b></div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">Leave Requests: <b>0 Pending</b></div>
+        </div>
+
       </div>
     </div>
 
