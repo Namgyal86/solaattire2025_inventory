@@ -31,6 +31,7 @@ const ICONS = {
   image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
   instagram:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>',
   whatsapp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.4-4.6A8.5 8.5 0 1112 20.5c-1.5 0-2.9-.4-4.1-1.1L3 21z"/><path d="M8.5 9.7c.3 2.9 2.5 5.1 5.4 5.4.6.1 1-.4.9-1l-.2-.9a.8.8 0 00-.6-.6l-1.4-.3-1.4-1.4-.3-1.4a.8.8 0 00-.6-.6l-.9-.2c-.6-.1-1.1.3-1 .9z"/></svg>',
+  wallet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-5"/><path d="M16 12h5v4h-5z"/><circle cx="18.5" cy="14" r="0.75"/></svg>'
 };
 function icon(name){return ICONS[name]||'';}
 function fmtNPR(n){return 'Rs. ' + (n||0).toLocaleString('en-IN');}
@@ -304,7 +305,7 @@ window.handleLoginSubmit = handleLoginSubmit;
 
 async function fetchAllData(){
   try {
-    const [pRes, oRes, offRes, sRes, eRes, lRes, bRes, fRes, uRes] = await Promise.all([
+    const [pRes, oRes, offRes, sRes, eRes, lRes, bRes, fRes, uRes, expRes] = await Promise.all([
       fetch('/api/products').then(r=>r.json()),
       fetch('/api/orders').then(r=>r.json()),
       fetch('/api/offers').then(r=>r.json()),
@@ -313,7 +314,8 @@ async function fetchAllData(){
       fetch('/api/leave-requests').then(r=>r.json()),
       fetch('/api/ncm/branches').then(r=>r.json()).catch(()=>[]),
       fetch('/api/ncm/finance/balance').then(r=>r.json()).catch(()=>null),
-      fetch('/api/auth/users').then(r=>r.json()).catch(()=>[])
+      fetch('/api/auth/users').then(r=>r.json()).catch(()=>[]),
+      fetch('/api/expenses').then(r=>r.json()).catch(()=>[])
     ]);
 
     PRODUCTS = pRes;
@@ -323,6 +325,7 @@ async function fetchAllData(){
     SHIPMENTS = sRes;
     EMPLOYEES = eRes;
     LEAVE_REQUESTS = lRes;
+    EXPENSES = expRes || [];
     if(Array.isArray(bRes) && bRes.length) NCM_BRANCHES_DATA = bRes;
     if(fRes && typeof fRes === 'object') NCM_FINANCE_DATA = fRes;
     if(Array.isArray(uRes) && uRes.length) SYSTEM_USERS = uRes;
@@ -346,6 +349,7 @@ const NAV = [
     {id:'offers', label:'Offers & Promotions', icon:'offers'}
   ]},
   {group:'Operations', items:[
+    {id:'expenses', label:'Expense Tracker', icon:'wallet'},
     {id:'employees', label:'Employees', icon:'employees'},
     {id:'reports', label:'Reports', icon:'reports'}
   ]}
@@ -357,6 +361,7 @@ const TITLES = {
   shipments:'Shipments — Nepal Can Move Courier API',
   inventory:'Inventory — Stock & Variant Control',
   offers:'Offers & Promotional Campaigns',
+  expenses:'Expense Tracker — Operating Costs & Outflow',
   employees:'Employees & Staff Roster',
   reports:'Reports & Financial Analytics'
 };
@@ -744,6 +749,7 @@ function renderAll(){
   else if(STATE.screen==='offers') c.innerHTML = renderOffers();
   else if(STATE.screen==='shipments') c.innerHTML = renderShipments();
   else if(STATE.screen==='employees') c.innerHTML = renderEmployees();
+  else if(STATE.screen==='expenses'){ c.innerHTML = renderExpenses(); afterExpensesRender(); }
   else if(STATE.screen==='reports'){ c.innerHTML = renderReports(); afterReportsRender(); }
 }
 
@@ -3876,6 +3882,271 @@ async function approveLeave(lid){
   }
 }
 window.approveLeave = approveLeave;
+
+/* ============================= EXPENSE TRACKER ============================= */
+let EXPENSES = [];
+if (!STATE.expenseCategory) STATE.expenseCategory = 'all';
+if (!STATE.expenseSearch) STATE.expenseSearch = '';
+
+const EXPENSE_CATEGORIES = [
+  'Shipping & Delivery',
+  'Marketing & Ads',
+  'Packaging & Supplies',
+  'Rent & Utilities',
+  'Salaries & Staff',
+  'Fabric & Procurement',
+  'Miscellaneous'
+];
+
+function setExpenseCategory(cat){
+  STATE.expenseCategory = cat;
+  renderAll();
+}
+window.setExpenseCategory = setExpenseCategory;
+
+function filterExpenses(q){
+  STATE.expenseSearch = (q || '').trim().toLowerCase();
+  renderAll();
+}
+window.filterExpenses = filterExpenses;
+
+function renderExpenses(){
+  let list = EXPENSES.slice();
+
+  if (STATE.expenseCategory !== 'all') {
+    list = list.filter(e => e.category === STATE.expenseCategory);
+  }
+
+  if (STATE.expenseSearch) {
+    list = list.filter(e => 
+      (e.title && e.title.toLowerCase().includes(STATE.expenseSearch)) ||
+      (e.category && e.category.toLowerCase().includes(STATE.expenseSearch)) ||
+      (e.paymentMethod && e.paymentMethod.toLowerCase().includes(STATE.expenseSearch)) ||
+      (e.notes && e.notes.toLowerCase().includes(STATE.expenseSearch))
+    );
+  }
+
+  const totalExpense = EXPENSES.reduce((a, e) => a + (e.amount || 0), 0);
+  const nowStr = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const monthExpense = EXPENSES.filter(e => e.date && e.date.startsWith(nowStr)).reduce((a, e) => a + (e.amount || 0), 0);
+
+  // Net Profit calculation
+  const totalRevenue = ORDERS.reduce((a, o) => a + (o.total || 0), 0);
+  const totalCOGS = ORDERS.reduce((a, o) => {
+    return a + (o.items || []).reduce((iAcc, it) => {
+      const prod = PRODUCTS.find(p => p.name === it.name);
+      const unitCost = prod ? prod.cost : Math.round(it.price * 0.5);
+      return iAcc + (unitCost * it.qty);
+    }, 0);
+  }, 0);
+  const netProfit = totalRevenue - totalCOGS - totalExpense;
+
+  const rowsHtml = list.length ? list.map(e => `
+    <tr>
+      <td class="mono font-bold" style="font-size:12px;color:var(--ink-soft);">${e.date}</td>
+      <td>
+        <div style="font-weight:700;font-size:13px;color:var(--ink);">${e.title}</div>
+        ${e.notes ? `<div class="td-sub" style="font-size:11px;color:var(--ink-faint);">${e.notes}</div>` : ''}
+      </td>
+      <td><span class="pill pill-info" style="font-size:11px;font-weight:600;">${e.category}</span></td>
+      <td><span class="pill pill-neutral" style="font-size:11px;">${e.paymentMethod || 'Cash'}</span></td>
+      <td class="mono font-bold" style="font-size:13.5px;color:var(--danger);">${fmtNPR(e.amount)}</td>
+      <td>
+        <div style="display:flex;gap:6px;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="openExpenseModal('${e.id}')" title="Edit Expense">${icon('edit')}</button>
+          <button class="btn btn-secondary btn-sm" onclick="deleteExpense('${e.id}')" style="color:var(--danger);" title="Delete Expense">${icon('trash')}</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') : `<tr><td colspan="6" class="empty-state" style="padding:32px 16px;">${icon('wallet')}<h3>No expenses recorded</h3><p>Click "+ Add New Expense" to log operational expenses.</p></td></tr>`;
+
+  return `
+    <div class="page-head">
+      <div>
+        <h1>Expense Tracker</h1>
+        <p class="page-sub">Track business operating costs, logistics fees, marketing spend &amp; net profitability</p>
+      </div>
+      <button class="btn btn-primary" onclick="openExpenseModal()">${icon('plus')} Add New Expense</button>
+    </div>
+
+    <!-- KPI Metrics Grid -->
+    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px;">
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
+        <div class="stat-value">${fmtNPR(totalExpense)}</div>
+        <div class="stat-label">Total Outflow &amp; Operating Expenses</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);">${icon('calendar')}</div>
+        <div class="stat-value">${fmtNPR(monthExpense)}</div>
+        <div class="stat-label">This Month's Outflow</div>
+      </div>
+
+      <div class="card stat-card">
+        <span class="stat-trend ${netProfit>=0?'trend-up':'trend-down'}">${netProfit>=0?'+':''}${fmtNPR(netProfit)} net</span>
+        <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('money')}</div>
+        <div class="stat-value">${fmtNPR(netProfit)}</div>
+        <div class="stat-label">Net Profit (Revenue - COGS - Expenses)</div>
+      </div>
+    </div>
+
+    <!-- Filter Control Toolbar -->
+    <div class="card card-pad" style="margin-bottom:18px;">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
+        
+        <!-- Category Filter -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="font-size:12px;font-weight:700;color:var(--ink-soft);">Category:</span>
+          <select onchange="setExpenseCategory(this.value)" style="padding:6px 12px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+            <option value="all" ${STATE.expenseCategory==='all'?'selected':''}>All Categories (${EXPENSES.length})</option>
+            ${EXPENSE_CATEGORIES.map(cat => `<option value="${cat}" ${STATE.expenseCategory===cat?'selected':''}>${cat}</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-box" style="width:260px;background:var(--bg);border:1px solid var(--border-soft);padding:6px 12px;border-radius:8px;display:flex;align-items:center;gap:8px;">
+          ${icon('search')}
+          <input placeholder="Search expenses by title or note..." value="${STATE.expenseSearch}" oninput="filterExpenses(this.value)" style="border:none;background:transparent;outline:none;font-size:12px;width:100%;">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Expenses Data Table -->
+    <div class="card card-pad">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Title &amp; Note</th>
+            <th>Category</th>
+            <th>Payment Method</th>
+            <th>Amount (NPR)</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function afterExpensesRender(){}
+
+function openExpenseModal(eid){
+  const e = eid ? EXPENSES.find(x => x.id === eid) : null;
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  document.getElementById('modalOverlay').innerHTML = `
+    <div class="modal" style="width:480px;">
+      <div class="modal-head">
+        <h3>${e ? 'Edit Expense Record' : 'Record New Expense'}</h3>
+        <button class="close-x" onclick="closeModal()">${icon('close')}</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="submitExpenseForm(event, '${e ? e.id : ''}')">
+          <div class="field">
+            <label>Expense Title *</label>
+            <input id="exp_title" value="${e ? e.title : ''}" placeholder="e.g. Courier Shipping Deposit / Polybags / Rent" required>
+          </div>
+
+          <div class="field-row" style="margin-top:12px;">
+            <div class="field">
+              <label>Amount (NPR) *</label>
+              <input type="number" step="0.01" id="exp_amount" value="${e ? e.amount : ''}" placeholder="e.g. 2500" required>
+            </div>
+            <div class="field">
+              <label>Expense Date *</label>
+              <input type="date" id="exp_date" value="${e ? e.date : todayStr}" required>
+            </div>
+          </div>
+
+          <div class="field-row" style="margin-top:12px;">
+            <div class="field">
+              <label>Category *</label>
+              <select id="exp_category">
+                ${EXPENSE_CATEGORIES.map(cat => `<option value="${cat}" ${e && e.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label>Payment Method *</label>
+              <select id="exp_method">
+                <option value="eSewa" ${e && e.paymentMethod === 'eSewa' ? 'selected' : ''}>eSewa</option>
+                <option value="Khalti" ${e && e.paymentMethod === 'Khalti' ? 'selected' : ''}>Khalti</option>
+                <option value="Bank Transfer" ${e && e.paymentMethod === 'Bank Transfer' ? 'selected' : ''}>Bank Transfer</option>
+                <option value="Cash" ${!e || e.paymentMethod === 'Cash' ? 'selected' : ''}>Cash / Counter</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label>Notes / Vendor Details</label>
+            <input id="exp_notes" value="${e ? e.notes : ''}" placeholder="e.g. Receipt #1042 / Supplier name">
+          </div>
+
+          <div class="modal-foot" style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">${e ? 'Update Expense' : 'Save Expense'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+window.openExpenseModal = openExpenseModal;
+
+async function submitExpenseForm(event, eid){
+  event.preventDefault();
+  const payload = {
+    title: document.getElementById('exp_title').value.trim(),
+    amount: parseFloat(document.getElementById('exp_amount').value) || 0,
+    date: document.getElementById('exp_date').value,
+    category: document.getElementById('exp_category').value,
+    paymentMethod: document.getElementById('exp_method').value,
+    notes: document.getElementById('exp_notes').value.trim()
+  };
+
+  const url = eid ? `/api/expenses/${eid}` : '/api/expenses';
+  const method = eid ? 'PUT' : 'POST';
+
+  try {
+    const res = await fetch(url, {
+      method: method,
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      toast(eid ? 'Expense updated successfully' : 'Expense recorded successfully');
+      closeModal();
+      await fetchAllData();
+    } else {
+      toast('Failed to save expense', 'error');
+    }
+  } catch (err) {
+    toast('Error saving expense', 'error');
+  }
+}
+window.submitExpenseForm = submitExpenseForm;
+
+async function deleteExpense(eid){
+  if (!confirm('Are you sure you want to delete this expense record?')) return;
+  try {
+    const res = await fetch(`/api/expenses/${eid}`, { method: 'DELETE' });
+    if (res.ok) {
+      toast('Expense deleted');
+      await fetchAllData();
+    } else {
+      toast('Failed to delete expense', 'error');
+    }
+  } catch (err) {
+    toast('Error deleting expense', 'error');
+  }
+}
+window.deleteExpense = deleteExpense;
 
 /* ============================= REPORTS & ANALYTICS ============================= */
 if(!STATE.reportTimeframe) STATE.reportTimeframe = 'month';

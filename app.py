@@ -14,6 +14,7 @@ from controllers.shipment_controller import shipment_bp
 from controllers.employee_controller import employee_bp
 from controllers.report_controller import report_bp
 from controllers.auth_controller import auth_bp
+from controllers.expense_controller import expense_bp
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
@@ -33,6 +34,7 @@ app.register_blueprint(shipment_bp)
 app.register_blueprint(employee_bp)
 app.register_blueprint(report_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(expense_bp)
 
 @app.route('/')
 def index():
@@ -62,6 +64,12 @@ def global_search():
         "orders": [o.to_dict() for o in orders],
         "shipments": [s.to_dict() for s in shipments]
     })
+
+@app.route('/api/sync-google-sheet', methods=['POST', 'GET'])
+def sync_sheet():
+    from services.sheet_sync import sync_google_sheet_data
+    res = sync_google_sheet_data()
+    return jsonify(res)
 
 if __name__ == '__main__':
     with app.app_context():
