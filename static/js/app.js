@@ -3941,6 +3941,10 @@ function renderExpenses(){
   }, 0);
   const netProfit = totalRevenue - totalCOGS - totalExpense;
 
+  const initialCapital = 250000;
+  const remainingCapitalBuffer = Math.max(0, initialCapital - totalExpense);
+  const capitalUtilizedPct = Math.min(100, Math.round((totalExpense / initialCapital) * 100));
+
   const rowsHtml = list.length ? list.map(e => `
     <tr>
       <td class="mono font-bold" style="font-size:12px;color:var(--ink-soft);">${e.date}</td>
@@ -3964,30 +3968,37 @@ function renderExpenses(){
     <div class="page-head">
       <div>
         <h1>Expense Tracker</h1>
-        <p class="page-sub">Track business operating costs, logistics fees, marketing spend &amp; net profitability</p>
+        <p class="page-sub">Track business operating costs, logistics fees, marketing spend &amp; capital utilization</p>
       </div>
       <button class="btn btn-primary" onclick="openExpenseModal()">${icon('plus')} Add New Expense</button>
     </div>
 
     <!-- KPI Metrics Grid -->
-    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px;">
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
       <div class="card stat-card">
-        <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
-        <div class="stat-value">${fmtNPR(totalExpense)}</div>
-        <div class="stat-label">Total Outflow &amp; Operating Expenses</div>
+        <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('money')}</div>
+        <div class="stat-value">${fmtNPR(initialCapital)}</div>
+        <div class="stat-label">Initial Capital Investment</div>
       </div>
 
       <div class="card stat-card">
-        <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);">${icon('calendar')}</div>
-        <div class="stat-value">${fmtNPR(monthExpense)}</div>
-        <div class="stat-label">This Month's Outflow</div>
+        <span class="stat-trend trend-down">${capitalUtilizedPct}% capital spent</span>
+        <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
+        <div class="stat-value">${fmtNPR(totalExpense)}</div>
+        <div class="stat-label">Total Outflow &amp; Expenses</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('box')}</div>
+        <div class="stat-value">${fmtNPR(remainingCapitalBuffer)}</div>
+        <div class="stat-label">Remaining Capital Buffer</div>
       </div>
 
       <div class="card stat-card">
         <span class="stat-trend ${netProfit>=0?'trend-up':'trend-down'}">${netProfit>=0?'+':''}${fmtNPR(netProfit)} net</span>
-        <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('money')}</div>
+        <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('trend')}</div>
         <div class="stat-value">${fmtNPR(netProfit)}</div>
-        <div class="stat-label">Net Profit (Revenue - COGS - Expenses)</div>
+        <div class="stat-label">Net Operating Profit</div>
       </div>
     </div>
 
