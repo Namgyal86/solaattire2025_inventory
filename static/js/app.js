@@ -761,12 +761,45 @@ function renderDashboard(){
   const activeOffers = OFFERS.filter(o=>o.status==='active').length;
   const revenue = ORDERS.reduce((a,o)=>a+o.total,0);
 
+  // Calculate Report Analytics for Dashboard Overview
+  let totalRevenue = revenue;
+  let totalCOGS = 0;
+  let totalUnitsSold = 0;
+  const prodStats = {};
+
+  PRODUCTS.forEach(p => {
+    prodStats[p.id] = { product: p, units: 0, revenue: 0, cost: 0 };
+  });
+
+  ORDERS.forEach(o => {
+    (o.items || []).forEach(it => {
+      const prod = PRODUCTS.find(p => p.name === it.name);
+      const unitCost = prod ? prod.cost : Math.round(it.price * 0.5);
+      const cogs = unitCost * it.qty;
+      totalCOGS += cogs;
+      totalUnitsSold += it.qty;
+
+      const pid = prod ? prod.id : it.name;
+      if (!prodStats[pid]) {
+        prodStats[pid] = { product: prod || {name: it.name, price: it.price, cost: unitCost}, units: 0, revenue: 0, cost: 0 };
+      }
+      prodStats[pid].units += it.qty;
+      prodStats[pid].revenue += (it.price * it.qty);
+      prodStats[pid].cost += cogs;
+    });
+  });
+
+  const grossProfit = totalRevenue - totalCOGS;
+  const grossMarginPct = totalRevenue ? Math.round((grossProfit / totalRevenue) * 100) : 0;
+  const avgOrderVal = ORDERS.length ? Math.round(totalRevenue / ORDERS.length) : 0;
+  const totalExpenseVal = EXPENSES.reduce((a,e)=>a+(e.amount||0),0);
+
   const stats = [
     {label:"Today's Orders", value:todayOrders, icon:'cart', color:'info', trend:'+12%', up:true, onclick: "setOrderTimeframe('today');navigate('orders');"},
     {label:'Pending Shipments', value:pendingShip, icon:'truck', color:'warning', trend:'+2', up:false, onclick: "navigate('shipments');"},
     {label:'Low-Stock Alerts', value:lowStock, icon:'alert', color:'danger', trend:'Act now', up:false, onclick: "navigate('inventory');"},
-    {label:'Active Offers', value:activeOffers, icon:'tag', color:'accent', trend:'3 live', up:true, onclick: "navigate('offers');"},
-    {label:'Revenue (7d)', value:fmtNPR(revenue), icon:'money', color:'success', trend:'+8.4%', up:true, onclick: "setReportTimeframe('week');navigate('reports');"},
+    {label:'Profit Till Now (Gross)', value:fmtNPR(grossProfit), icon:'money', color:'success', trend:`${grossMarginPct}% margin`, up:true, onclick: "navigate('reports');"},
+    {label:'Gross Revenue', value:fmtNPR(revenue), icon:'trend', color:'accent', trend:'517 orders', up:true, onclick: "navigate('reports');"},
   ];
 
   let statCards = stats.map(s=>`
@@ -850,38 +883,6 @@ function renderDashboard(){
       <span class="activity-action-btn" onclick="event.stopPropagation();navigate('offers');openEditOfferModal('${o.id}');">Edit →</span>
     </div>`).join('');
 
-  // Calculate Report Analytics for Dashboard Overview
-  let totalRevenue = ORDERS.reduce((a,o) => a + o.total, 0);
-  let totalCOGS = 0;
-  let totalUnitsSold = 0;
-  const prodStats = {};
-
-  PRODUCTS.forEach(p => {
-    prodStats[p.id] = { product: p, units: 0, revenue: 0, cost: 0 };
-  });
-
-  ORDERS.forEach(o => {
-    (o.items || []).forEach(it => {
-      const prod = PRODUCTS.find(p => p.name === it.name);
-      const unitCost = prod ? prod.cost : Math.round(it.price * 0.5);
-      const cogs = unitCost * it.qty;
-      totalCOGS += cogs;
-      totalUnitsSold += it.qty;
-
-      const pid = prod ? prod.id : it.name;
-      if (!prodStats[pid]) {
-        prodStats[pid] = { product: prod || {name: it.name, price: it.price, cost: unitCost}, units: 0, revenue: 0, cost: 0 };
-      }
-      prodStats[pid].units += it.qty;
-      prodStats[pid].revenue += (it.price * it.qty);
-      prodStats[pid].cost += cogs;
-    });
-  });
-
-  const grossProfit = totalRevenue - totalCOGS;
-  const grossMarginPct = totalRevenue ? Math.round((grossProfit / totalRevenue) * 100) : 0;
-  const avgOrderVal = ORDERS.length ? Math.round(totalRevenue / ORDERS.length) : 0;
-
   const sortedProductStats = Object.values(prodStats)
     .filter(ps => ps.units > 0 || ps.revenue > 0)
     .sort((a,b) => b.units - a.units);
@@ -929,24 +930,24 @@ function renderDashboard(){
 
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;">
         <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
-          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">INITIAL CAPITAL</div>
-          <div style="font-size:18px;font-weight:800;color:var(--accent);margin-top:2px;">${fmtNPR(250000)}</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Seed Investment</div>
+          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">PROFIT TILL NOW (GROSS)</div>
+          <div style="font-size:20px;font-weight:800;color:var(--success);margin-top:2px;">${fmtNPR(grossProfit)}</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">${grossMarginPct}% Gross Margin</div>
+        </div>
+        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">GROSS SALES REVENUE</div>
+          <div style="font-size:20px;font-weight:800;color:var(--accent);margin-top:2px;">${fmtNPR(totalRevenue)}</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">517 Total Orders</div>
         </div>
         <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
           <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">OPERATING EXPENSES</div>
-          <div style="font-size:18px;font-weight:800;color:var(--danger);margin-top:2px;">${fmtNPR(EXPENSES.reduce((a,e)=>a+(e.amount||0),0))}</div>
+          <div style="font-size:20px;font-weight:800;color:var(--danger);margin-top:2px;">${fmtNPR(totalExpenseVal)}</div>
           <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Total Outflow</div>
         </div>
         <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
-          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">GROSS PROFIT MARGIN</div>
-          <div style="font-size:18px;font-weight:800;color:var(--success);margin-top:2px;">${grossMarginPct}%</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Profit: ${fmtNPR(grossProfit)}</div>
-        </div>
-        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
           <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">UNSOLD STOCK ASSET</div>
-          <div style="font-size:18px;font-weight:800;color:var(--info);margin-top:2px;">${fmtNPR(PRODUCTS.reduce((a,p)=>a+p.variants.reduce((va,v)=>va+(v.stock*p.price),0),0))}</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Retail Value</div>
+          <div style="font-size:20px;font-weight:800;color:var(--info);margin-top:2px;">${fmtNPR(PRODUCTS.reduce((a,p)=>a+p.variants.reduce((va,v)=>va+(v.stock*p.price),0),0))}</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Retail Stock Asset</div>
         </div>
       </div>
 
