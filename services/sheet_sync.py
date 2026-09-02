@@ -415,13 +415,15 @@ def sync_google_sheet_data():
         base_item_name = clean_base_product_name(raw_item_name)
         color = r.get('Color', '').strip() or 'Free Color'
         size = r.get('SIZE', '').strip() or 'Free Size'
+
+        raw_q = r.get('QTY \nORDERED', r.get('QTY ORDERED', '')).strip()
         try:
-            qty = int(r.get('QTY \nORDERED', r.get('QTY ORDERED', '1')).strip() or '1')
+            qty = int(raw_q) if raw_q != '' else 0
         except ValueError:
-            qty = 1
+            qty = 0
 
         order_st = r.get('ORDER \nSTATUS', r.get('ORDER STATUS', '')).strip().lower()
-        if 'cancel' not in order_st and 'return' not in order_st:
+        if 'cancel' not in order_st and 'return' not in order_st and qty > 0:
             sold_qty_by_product[base_item_name] = sold_qty_by_product.get(base_item_name, 0) + qty
             sold_qty_by_variant[(base_item_name, size, color)] = sold_qty_by_variant.get((base_item_name, size, color), 0) + qty
 
@@ -516,10 +518,11 @@ def sync_google_sheet_data():
         payment_with = r.get('PAYMENT WITH', '').strip() or 'Direct Cash'
         order_status_raw = r.get('ORDER \nSTATUS', r.get('ORDER STATUS', '')).strip().lower()
 
+        raw_q = r.get('QTY \nORDERED', r.get('QTY ORDERED', '')).strip()
         try:
-            qty = int(r.get('QTY \nORDERED', r.get('QTY ORDERED', '1')).strip() or '1')
+            qty = int(raw_q) if raw_q != '' else 0
         except ValueError:
-            qty = 1
+            qty = 0
 
         try:
             unit_price = float(r.get('UNIT \nPRICE', r.get('UNIT PRICE', '0')).strip() or '0')
@@ -546,12 +549,13 @@ def sync_google_sheet_data():
         if key not in grouped_orders:
             grouped_orders[key] = []
 
-        grouped_orders[key].append({
-            'item_name': base_item_name, # Map to Master Product Name
-            'variant': f"{size} / {color}",
-            'qty': qty,
-            'price': unit_price
-        })
+        if qty > 0:
+            grouped_orders[key].append({
+                'item_name': base_item_name, # Map to Master Product Name
+                'variant': f"{size} / {color}",
+                'qty': qty,
+                'price': unit_price
+            })
 
     order_seq = 1001
     created_orders_count = 0
