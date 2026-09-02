@@ -311,7 +311,7 @@ def parse_sheet_date(d_str):
             return "2026-05-15 12:00"
 
 def parse_purchase_date_only(d_str):
-    if not d_str or not d_str.strip():
+    if not d_str or not str(d_str).strip():
         return "2026-05-01"
     d_clean = re.sub(r'(\d+)(st|nd|rd|th)', r'\1', str(d_str).strip())
     try:
@@ -324,9 +324,18 @@ def parse_purchase_date_only(d_str):
         except Exception:
             return "2026-05-01"
 
+def clean_base_product_name(name):
+    """Strips trailing restock batch numbers like (1), (2), (3)... to normalize back to master product title."""
+    if not name:
+        return ""
+    n = name.strip()
+    # Strip trailing batch suffix like (1), (2), (11), (4)
+    n_clean = re.sub(r'\s*\(\d+\)\s*$', '', n).strip()
+    return n_clean
+
 def categorize_product(name):
     nl = name.lower()
-    if any(k in nl for k in ['pant', 'trouser', 'cargo', 'jean', 'bottom', 'short', 'skirt', 'plazo', 'bottom']):
+    if any(k in nl for k in ['pant', 'trouser', 'cargo', 'jean', 'bottom', 'short', 'skirt', 'plazo']):
         return 'Bottoms'
     elif any(k in nl for k in ['hoodie', 'jacket', 'coat', 'windbreaker', 'outer', 'cardigan', 'shrug', 'outerwear']):
         return 'Outerwear'
@@ -344,7 +353,8 @@ def parse_raw_stock_purchases():
     for line in lines:
         parts = line.split('\t')
         if len(parts) >= 8:
-            name = parts[0].strip()
+            raw_name = parts[0].strip()
+            base_name = clean_base_product_name(raw_name)
             size = parts[1].strip() or 'Free Size'
             color = parts[2].strip() or 'Free Color'
             try:
@@ -361,9 +371,10 @@ def parse_raw_stock_purchases():
             except ValueError:
                 sales_rate = purchase_rate * 1.4 if purchase_rate > 0 else 1000.0
 
-            if name:
+            if base_name:
                 items.append({
-                    'name': name,
+                    'raw_name': raw_name,
+                    'base_name': base_name,
                     'size': size,
                     'color': color,
                     'qty': qty,
@@ -374,7 +385,7 @@ def parse_raw_stock_purchases():
     return items
 
 def sync_google_sheet_data():
-    """Syncs Stock Purchases & Google Sheet Sales Orders, deducting sold units from stock."""
+    """Syncs Stock Purchases & Google Sheet Sales Orders, consolidating restock batches into Master Products."""
     # 1. Fetch CSV Sales Orders from Google Sheet
     req = urllib.request.Request(CSV_EXPORT_URL, headers={'User-Agent': 'Mozilla/5.0'})
     raw_csv = urllib.request.urlopen(req).read().decode('utf-8')
@@ -393,14 +404,15 @@ def sync_google_sheet_data():
     db.session.query(Product).delete()
     db.session.commit()
 
-    # 2. Count Total Sold QTY per Product and Variant from Sheet Sales Orders
-    sold_qty_by_product = {} # item_name -> total sold count
-    sold_qty_by_variant = {} # (item_name, size, color) -> sold count
+    # 2. Count Total Sold QTY per Master Product and Variant from Sheet Sales Orders
+    sold_qty_by_product = {} # base_name -> total sold count
+    sold_qty_by_variant = {} # (base_name, size, color) -> sold count
 
     for r in sheet_rows:
-        item_name = r.get('ITEM NAME', '').strip()
-        if not item_name:
+        raw_item_name = r.get('ITEM NAME', '').strip()
+        if not raw_item_name:
             continue
+        base_item_name = clean_base_product_name(raw_item_name)
         color = r.get('Color', '').strip() or 'Free Color'
         size = r.get('SIZE', '').strip() or 'Free Size'
         try:
@@ -409,134 +421,95 @@ def sync_google_sheet_data():
             qty = 1
 
         order_st = r.get('ORDER \nSTATUS', r.get('ORDER STATUS', '')).strip().lower()
-        # Only deduct stock if order is delivered, shipped, packed, or confirmed (not cancelled)
         if 'cancel' not in order_st and 'return' not in order_st:
-            sold_qty_by_product[item_name] = sold_qty_by_product.get(item_name, 0) + qty
-            sold_qty_by_variant[(item_name, size, color)] = sold_qty_by_variant.get((item_name, size, color), 0) + qty
+            sold_qty_by_product[base_item_name] = sold_qty_by_product.get(base_item_name, 0) + qty
+            sold_qty_by_variant[(base_item_name, size, color)] = sold_qty_by_variant.get((base_item_name, size, color), 0) + qty
 
-    # 3. Parse Stock Purchase Table
+    # 3. Parse Stock Purchase Table with Restock Consolidation
     purchased_items = parse_raw_stock_purchases()
 
-    product_map = {} # item_name -> Product model
-    variant_map = {} # (item_name, size, color) -> Variant model
+    # Group purchased items by Master Base Product
+    master_purchases = {} # base_name -> list of p_items
+    for p_item in purchased_items:
+        b_name = p_item['base_name']
+        if b_name not in master_purchases:
+            master_purchases[b_name] = []
+        master_purchases[b_name].append(p_item)
+
+    product_map = {} # base_name -> Product model
+    variant_map = {} # (base_name, size, color) -> Variant model
     prod_counter = 101
     variant_counter = 1
 
-    # Populate Products & Variants from Purchases
-    for p_item in purchased_items:
-        name = p_item['name']
-        size = p_item['size']
-        color = p_item['color']
-        purchased_qty = p_item['qty']
-        cost = p_item['cost']
-        price = p_item['price']
-        p_date = p_item['purchase_date']
+    for base_name, p_list in master_purchases.items():
+        pid = f"PROD-{prod_counter:03d}"
+        prod_counter += 1
+        sku = f"SA-{re.sub(r'[^A-Z0-9]', '', base_name.upper())[:6]}-{prod_counter:03d}"
+        cat = categorize_product(base_name)
 
-        if name not in product_map:
-            pid = f"PROD-{prod_counter:03d}"
-            prod_counter += 1
-            sku = f"SA-{re.sub(r'[^A-Z0-9]', '', name.upper())[:6]}-{prod_counter:03d}"
-            cat = categorize_product(name)
+        # Use latest price, cost, and purchase date
+        latest_item = p_list[-1]
+        cost = latest_item['cost']
+        price = latest_item['price']
+        p_date = latest_item['purchase_date']
 
-            p = Product(
-                id=pid,
-                name=name,
-                sku=sku,
-                category=cat,
-                img='/static/icons/icon-192.png',
-                on_offer=False,
-                price=price if price > 0 else 1000.0,
-                cost=cost if cost > 0 else 500.0,
-                stocked_on=p_date,
-                next_restock='2026-09-30'
-            )
-            db.session.add(p)
-            product_map[name] = p
+        p = Product(
+            id=pid,
+            name=base_name, # Master product title without (1), (2) restock batch tags
+            sku=sku,
+            category=cat,
+            img='/static/icons/icon-192.png',
+            on_offer=False,
+            price=price if price > 0 else 1000.0,
+            cost=cost if cost > 0 else 500.0,
+            stocked_on=p_date,
+            next_restock='2026-09-30'
+        )
+        db.session.add(p)
+        product_map[base_name] = p
 
-        # Add or update Variant stock
-        v_key = (name, size, color)
-        if v_key not in variant_map:
+        # Accumulate purchased stock across all restock batches per variant
+        variant_purchased_qty = {} # (size, color) -> total purchased
+        for p_item in p_list:
+            v_key = (p_item['size'], p_item['color'])
+            variant_purchased_qty[v_key] = variant_purchased_qty.get(v_key, 0) + p_item['qty']
+
+        for (size, color), total_purchased in variant_purchased_qty.items():
             v_id = f"VAR-{variant_counter:04d}"
             variant_counter += 1
 
-            # DEDUCTION LOGIC: Stock Remaining = Initial Purchased QTY - Total Sold QTY
-            sold_qty = sold_qty_by_variant.get(v_key, 0)
+            # DEDUCTION LOGIC: Stock Remaining = Total Purchased across all restock batches - Total Sold
+            sold_qty = sold_qty_by_variant.get((base_name, size, color), 0)
             if sold_qty == 0:
-                # If exact variant key didn't match, check product level sold allocation
-                sold_qty = min(purchased_qty, sold_qty_by_product.get(name, 0))
+                sold_qty = min(total_purchased, sold_qty_by_product.get(base_name, 0))
 
-            remaining_stock = max(0, purchased_qty - sold_qty)
+            remaining_stock = max(0, total_purchased - sold_qty)
 
             v = Variant(
                 id=v_id,
-                product_id=product_map[name].id,
+                product_id=p.id,
                 size=size,
                 color=color,
                 stock=remaining_stock,
                 reorder=2
             )
             db.session.add(v)
-            variant_map[v_key] = v
-        else:
-            # Increment stock if same variant was purchased multiple times
-            existing_v = variant_map[v_key]
-            existing_v.stock += purchased_qty
-
-    # Ensure any items in Sheet that weren't in Purchases are also created gracefully
-    for r in sheet_rows:
-        item_name = r.get('ITEM NAME', '').strip()
-        if not item_name or item_name in product_map:
-            continue
-        color = r.get('Color', '').strip() or 'Free Color'
-        size = r.get('SIZE', '').strip() or 'Free Size'
-        try:
-            unit_price = float(r.get('UNIT \nPRICE', r.get('UNIT PRICE', '0')).strip() or '0')
-        except ValueError:
-            unit_price = 1000.0
-
-        pid = f"PROD-{prod_counter:03d}"
-        prod_counter += 1
-        sku = f"SA-{re.sub(r'[^A-Z0-9]', '', item_name.upper())[:6]}-{prod_counter:03d}"
-        cat = categorize_product(item_name)
-
-        p = Product(
-            id=pid,
-            name=item_name,
-            sku=sku,
-            category=cat,
-            img='/static/icons/icon-192.png',
-            on_offer=False,
-            price=unit_price if unit_price > 0 else 1000.0,
-            cost=round(unit_price * 0.55, 2),
-            stocked_on='2026-05-01',
-            next_restock='2026-09-30'
-        )
-        db.session.add(p)
-        product_map[item_name] = p
-
-        v_id = f"VAR-{variant_counter:04d}"
-        variant_counter += 1
-        v = Variant(
-            id=v_id,
-            product_id=p.id,
-            size=size,
-            color=color,
-            stock=15, # Default stock for items not in purchase table
-            reorder=3
-        )
-        db.session.add(v)
-        variant_map[(item_name, size, color)] = v
+            variant_map[(base_name, size, color)] = v
 
     db.session.commit()
 
-    # 4. Group Sheet Sales Rows into Orders & Create NCM Shipments
+    # 4. Group Sheet Sales Rows into Master Product Orders & Create NCM Shipments
     grouped_orders = {}
 
     for r in sheet_rows:
         cust_name = r.get('CUSTOMER NAME', '').strip() or 'Online Customer'
         contact = r.get('CONTACT', '').strip()
         address = r.get('Address', '').strip()
-        item_name = r.get('ITEM NAME', '').strip()
+        raw_item_name = r.get('ITEM NAME', '').strip()
+        if not raw_item_name:
+            continue
+
+        base_item_name = clean_base_product_name(raw_item_name)
         color = r.get('Color', '').strip() or 'Free Color'
         size = r.get('SIZE', '').strip() or 'Free Size'
         date_str = parse_sheet_date(r.get('DATE', ''))
@@ -573,13 +546,12 @@ def sync_google_sheet_data():
         if key not in grouped_orders:
             grouped_orders[key] = []
 
-        if item_name:
-            grouped_orders[key].append({
-                'item_name': item_name,
-                'variant': f"{size} / {color}",
-                'qty': qty,
-                'price': unit_price
-            })
+        grouped_orders[key].append({
+            'item_name': base_item_name, # Map to Master Product Name
+            'variant': f"{size} / {color}",
+            'qty': qty,
+            'price': unit_price
+        })
 
     order_seq = 1001
     created_orders_count = 0
@@ -641,7 +613,7 @@ def sync_google_sheet_data():
 
     return {
         "status": "success",
-        "message": f"Successfully synced Stock Purchases & Google Sheet Sales! Processed {len(product_map)} products with exact purchase rates & auto-deducted {created_orders_count} sold orders!",
+        "message": f"Successfully consolidated Restock Batches into {len(product_map)} Master Products & auto-deducted {created_orders_count} sold orders!",
         "products_count": len(product_map),
         "orders_count": created_orders_count,
         "shipments_count": created_shipments_count
