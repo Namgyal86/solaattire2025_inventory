@@ -4301,6 +4301,8 @@ window.updateReportCustomDates = updateReportCustomDates;
 
 function renderReports(){
   const tf = STATE.reportTimeframe || 'all';
+  const initialCapital = 250000;
+  const totalExpenses = (EXPENSES || []).reduce((a, e) => a + (e.amount || 0), 0);
   const start = new Date(STATE.reportStartDate);
   const end = new Date(STATE.reportEndDate);
   end.setHours(23, 59, 59, 999);
