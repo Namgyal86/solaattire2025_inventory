@@ -1401,14 +1401,12 @@ function renderCreateOrderPanel(){
 
         <div class="field-row" style="margin-top:10px;">
           <div class="field">
-            <label>COD Amount (NPR) *</label>
-            <input type="number" id="co_cod_charge" value="${total}" placeholder="0 if advance paid">
+            <label>Advance Payment Received (NPR)</label>
+            <input type="number" id="co_advance_paid" value="0" min="0" oninput="updateOrderCODCalculation()" placeholder="e.g. 500 or 1000">
           </div>
-          <div class="field" style="justify-content:flex-end;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-top:22px;font-weight:600;color:var(--accent);">
-              <input type="checkbox" id="co_advance_paid" onchange="toggleAdvancePayment(this.checked, ${total})" style="width:16px;height:16px;accent-color:var(--accent);">
-              Advance Paid (Set COD = Rs. 0)
-            </label>
+          <div class="field">
+            <label>Remaining COD Charge (NPR) *</label>
+            <input type="number" id="co_cod_charge" value="${total}" placeholder="0 if fully paid in advance">
           </div>
         </div>
 
@@ -1474,16 +1472,16 @@ function filterOrderProducts(query){
 window.filterOrderProducts = filterOrderProducts;
 
 function toggleAdvancePayment(isPaid, calcTotal){
+function updateOrderCODCalculation(){
+  const advInput = document.getElementById('co_advance_paid');
   const codInput = document.getElementById('co_cod_charge');
   if(!codInput) return;
-  if(isPaid){
-    codInput.value = '0';
-    toast('COD set to Rs. 0 (Advance Payment)');
-  } else {
-    codInput.value = calcTotal;
-  }
+  const adv = advInput ? (parseFloat(advInput.value) || 0) : 0;
+  const total = STATE.pendingOrderItems.reduce((a,i)=>a+i.lineTotal,0);
+  const remainingCOD = Math.max(0, total - adv);
+  codInput.value = remainingCOD;
 }
-window.toggleAdvancePayment = toggleAdvancePayment;
+window.updateOrderCODCalculation = updateOrderCODCalculation;
 
 function updateOrderSummaryPartial(){
   const wrap = document.getElementById('co_order_summary_wrap');
@@ -3977,6 +3975,27 @@ function renderReports(){
     });
   });
 
+  // 3. Unsold Remaining Inventory Stock Calculation
+  let remainingStockUnits = 0;
+  let remainingStockCostVal = 0;
+  let remainingStockSalesVal = 0;
+
+  const stockByCategory = {};
+  PRODUCTS.forEach(p => {
+    const cat = p.category || 'Apparel & Clothing';
+    if(!stockByCategory[cat]) stockByCategory[cat] = { units: 0, cost: 0, sales: 0 };
+    (p.variants || []).forEach(v => {
+      const st = Math.max(0, v.stock || 0);
+      remainingStockUnits += st;
+      remainingStockCostVal += (st * (p.cost || 0));
+      remainingStockSalesVal += (st * (p.price || 0));
+
+      stockByCategory[cat].units += st;
+      stockByCategory[cat].cost += (st * (p.cost || 0));
+      stockByCategory[cat].sales += (st * (p.price || 0));
+    });
+  });
+
   const grossProfit = totalRevenue - totalCOGS;
   const grossMarginPct = totalRevenue ? Math.round((grossProfit / totalRevenue) * 100) : 0;
   const avgOrderVal = filteredOrders.length ? Math.round(totalRevenue / filteredOrders.length) : 0;
@@ -4042,7 +4061,7 @@ function renderReports(){
     </div>
 
     <!-- KPI Summary Cards -->
-    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
       <div class="card stat-card">
         <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('money')}</div>
         <div class="stat-value">${fmtNPR(totalRevenue)}</div>
@@ -4066,6 +4085,35 @@ function renderReports(){
         <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);">${icon('inventory')}</div>
         <div class="stat-value">${totalUnitsSold}</div>
         <div class="stat-label">Units Sold</div>
+      </div>
+    </div>
+
+    <!-- Remaining Inventory Stock Valuation Widget -->
+    <div class="card card-pad" style="margin-bottom:18px;background:linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%);border:1px solid var(--border);">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:14px;font-weight:700;">📦 Remaining Unsold Inventory Stock Valuation</span>
+        <span class="pill pill-info" style="font-size:11.5px;font-weight:700;">${remainingStockUnits} Units Remaining</span>
+      </div>
+      <div class="section-sub" style="margin-bottom:14px;">Total cost investment &amp; potential retail revenue of remaining unsold stock in inventory</div>
+      
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:0;">
+        <div class="card stat-card" style="background:var(--surface);">
+          <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('inventory')}</div>
+          <div class="stat-value">${remainingStockUnits} pcs</div>
+          <div class="stat-label">Stock Units Left</div>
+        </div>
+
+        <div class="card stat-card" style="background:var(--surface);">
+          <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);">${icon('money')}</div>
+          <div class="stat-value">${fmtNPR(remainingStockCostVal)}</div>
+          <div class="stat-label">Stock Cost Value (Investment)</div>
+        </div>
+
+        <div class="card stat-card" style="background:var(--surface);">
+          <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('trend')}</div>
+          <div class="stat-value">${fmtNPR(remainingStockSalesVal)}</div>
+          <div class="stat-label">Potential Retail Sales Value</div>
+        </div>
       </div>
     </div>
 

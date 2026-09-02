@@ -48,6 +48,8 @@ def create_order():
     else:
         order_datetime = now_str
 
+    advance_val = float(data.get('advancePaid', data.get('advance_paid', 0)))
+
     order = Order(
         id=oid,
         customer=data.get('customer', 'Anonymous Customer'),
@@ -56,7 +58,8 @@ def create_order():
         offer_amount=offer_amount,
         status=data.get('status', 'confirmed'),
         date=order_datetime,
-        total=float(data.get('total', 0))
+        total=float(data.get('total', 0)),
+        advance_paid=advance_val
     )
     db.session.add(order)
     

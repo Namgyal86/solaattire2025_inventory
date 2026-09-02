@@ -578,7 +578,8 @@ def sync_google_sheet_data():
         oid = f"ORD-{order_seq}"
         order_seq += 1
 
-        total_amount = sum(it['qty'] * it['price'] for it in items) + deliv_charge
+        # Pure product sales revenue (without adding courier fee into product sales)
+        total_amount = sum(it['qty'] * it['price'] for it in items)
         handle_clean = f"@{re.sub(r'[^a-zA-Z0-9_]', '', cust_name.lower())}" if cust_name else "@customer"
         if contact:
             handle_clean += f" ({contact})"
@@ -591,7 +592,8 @@ def sync_google_sheet_data():
             offer_amount=0.0,
             status=st,
             date=date_str,
-            total=total_amount
+            total=total_amount,
+            advance_paid=0.0
         )
         db.session.add(order)
 
@@ -618,7 +620,7 @@ def sync_google_sheet_data():
             dest=dest_branch,
             fbranch='TINKUNE',
             package_desc=f"{len(items)}x Apparel / Clothing",
-            cod=total_amount,
+            cod=total_amount + deliv_charge,
             status=ship_status,
             created=date_str.split(' ')[0]
         )

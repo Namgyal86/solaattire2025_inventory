@@ -12,6 +12,7 @@ class Order(db.Model):
     status = db.Column(db.String(50), default='pending')  # pending, confirmed, shipped, delivered
     date = db.Column(db.String(20), nullable=False)
     total = db.Column(db.Float, nullable=False)
+    advance_paid = db.Column(db.Float, default=0.0)
 
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan', lazy=True)
 
@@ -24,6 +25,7 @@ class Order(db.Model):
             'status': self.status,
             'date': self.date,
             'total': self.total,
+            'advancePaid': self.advance_paid or 0.0,
             'items': [item.to_dict() for item in self.items]
         }
 
