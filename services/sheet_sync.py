@@ -325,13 +325,20 @@ def parse_purchase_date_only(d_str):
             return "2026-05-01"
 
 def clean_base_product_name(name):
-    """Strips trailing restock batch numbers like (1), (2), (3)... to normalize back to master product title."""
+    """Strips trailing restock batch numbers like (1), (2), (3) and (sale) tags."""
     if not name:
         return ""
     n = name.strip()
+    # Strip (sale) or (SALE) tag
+    n_clean = re.sub(r'\s*\(\s*sale\s*\)\s*', '', n, flags=re.IGNORECASE).strip()
     # Strip trailing batch suffix like (1), (2), (11), (4)
-    n_clean = re.sub(r'\s*\(\d+\)\s*$', '', n).strip()
+    n_clean = re.sub(r'\s*\(\d+\)\s*$', '', n_clean).strip()
     return n_clean
+
+def check_is_on_sale(name):
+    if not name:
+        return False
+    return bool(re.search(r'\(sale\)', name, re.IGNORECASE))
 
 def categorize_product(name):
     nl = name.lower()
@@ -355,6 +362,7 @@ def parse_raw_stock_purchases():
         if len(parts) >= 8:
             raw_name = parts[0].strip()
             base_name = clean_base_product_name(raw_name)
+            is_sale = check_is_on_sale(raw_name)
             size = parts[1].strip() or 'Free Size'
             color = parts[2].strip() or 'Free Color'
             try:
@@ -375,6 +383,7 @@ def parse_raw_stock_purchases():
                 items.append({
                     'raw_name': raw_name,
                     'base_name': base_name,
+                    'is_sale': is_sale,
                     'size': size,
                     'color': color,
                     'qty': qty,
@@ -385,7 +394,7 @@ def parse_raw_stock_purchases():
     return items
 
 def sync_google_sheet_data():
-    """Syncs Stock Purchases & Google Sheet Sales Orders, consolidating restock batches into Master Products."""
+    """Syncs Stock Purchases & Google Sheet Sales Orders, consolidating restock batches and marking (sale) items."""
     # 1. Fetch CSV Sales Orders from Google Sheet
     req = urllib.request.Request(CSV_EXPORT_URL, headers={'User-Agent': 'Mozilla/5.0'})
     raw_csv = urllib.request.urlopen(req).read().decode('utf-8')
@@ -404,15 +413,20 @@ def sync_google_sheet_data():
     db.session.query(Product).delete()
     db.session.commit()
 
-    # 2. Count Total Sold QTY per Master Product and Variant from Sheet Sales Orders
+    # 2. Count Total Sold QTY & Detect (sale) tag per Master Product from Sheet Sales Orders
     sold_qty_by_product = {} # base_name -> total sold count
     sold_qty_by_variant = {} # (base_name, size, color) -> sold count
+    products_on_sale = set() # base_names that have (sale) tag
 
     for r in sheet_rows:
         raw_item_name = r.get('ITEM NAME', '').strip()
         if not raw_item_name:
             continue
+        
         base_item_name = clean_base_product_name(raw_item_name)
+        if check_is_on_sale(raw_item_name):
+            products_on_sale.add(base_item_name)
+
         color = r.get('Color', '').strip() or 'Free Color'
         size = r.get('SIZE', '').strip() or 'Free Size'
 
@@ -430,10 +444,11 @@ def sync_google_sheet_data():
     # 3. Parse Stock Purchase Table with Restock Consolidation
     purchased_items = parse_raw_stock_purchases()
 
-    # Group purchased items by Master Base Product
     master_purchases = {} # base_name -> list of p_items
     for p_item in purchased_items:
         b_name = p_item['base_name']
+        if p_item['is_sale']:
+            products_on_sale.add(b_name)
         if b_name not in master_purchases:
             master_purchases[b_name] = []
         master_purchases[b_name].append(p_item)
@@ -449,19 +464,19 @@ def sync_google_sheet_data():
         sku = f"SA-{re.sub(r'[^A-Z0-9]', '', base_name.upper())[:6]}-{prod_counter:03d}"
         cat = categorize_product(base_name)
 
-        # Use latest price, cost, and purchase date
         latest_item = p_list[-1]
         cost = latest_item['cost']
         price = latest_item['price']
         p_date = latest_item['purchase_date']
+        is_on_sale = base_name in products_on_sale
 
         p = Product(
             id=pid,
-            name=base_name, # Master product title without (1), (2) restock batch tags
+            name=base_name,
             sku=sku,
             category=cat,
             img='/static/icons/icon-192.png',
-            on_offer=False,
+            on_offer=is_on_sale, # Set ON OFFER flag
             price=price if price > 0 else 1000.0,
             cost=cost if cost > 0 else 500.0,
             stocked_on=p_date,
@@ -470,7 +485,6 @@ def sync_google_sheet_data():
         db.session.add(p)
         product_map[base_name] = p
 
-        # Accumulate purchased stock across all restock batches per variant
         variant_purchased_qty = {} # (size, color) -> total purchased
         for p_item in p_list:
             v_key = (p_item['size'], p_item['color'])
@@ -480,7 +494,6 @@ def sync_google_sheet_data():
             v_id = f"VAR-{variant_counter:04d}"
             variant_counter += 1
 
-            # DEDUCTION LOGIC: Stock Remaining = Total Purchased across all restock batches - Total Sold
             sold_qty = sold_qty_by_variant.get((base_name, size, color), 0)
             if sold_qty == 0:
                 sold_qty = min(total_purchased, sold_qty_by_product.get(base_name, 0))
@@ -617,7 +630,7 @@ def sync_google_sheet_data():
 
     return {
         "status": "success",
-        "message": f"Successfully consolidated Restock Batches into {len(product_map)} Master Products & auto-deducted {created_orders_count} sold orders!",
+        "message": f"Successfully updated (sale) items & consolidated 95 Master Products with auto-deducted {created_orders_count} sold orders!",
         "products_count": len(product_map),
         "orders_count": created_orders_count,
         "shipments_count": created_shipments_count
