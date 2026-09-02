@@ -721,7 +721,9 @@ window.closeGlobalSearch = closeGlobalSearch;
 
 function navigate(screen){
   STATE.screen = screen;
+  STATE.orderDetailId = null;
   renderAll();
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
 window.navigate = navigate;
 
@@ -742,15 +744,21 @@ function renderAll(){
   renderTopbar();
   renderMobileBottomNav();
   const c = document.getElementById('content');
-  if(STATE.screen==='dashboard') c.innerHTML = renderDashboard();
-  else if(STATE.screen==='inbox'){ c.innerHTML = renderInbox(); afterInboxRender(); }
-  else if(STATE.screen==='orders'){ c.innerHTML = STATE.orderDetailId ? renderOrderDetail() : renderOrders(); }
-  else if(STATE.screen==='inventory'){ c.innerHTML = renderInventory(); afterInventoryRender(); }
-  else if(STATE.screen==='offers') c.innerHTML = renderOffers();
-  else if(STATE.screen==='shipments') c.innerHTML = renderShipments();
-  else if(STATE.screen==='employees') c.innerHTML = renderEmployees();
-  else if(STATE.screen==='expenses'){ c.innerHTML = renderExpenses(); afterExpensesRender(); }
-  else if(STATE.screen==='reports'){ c.innerHTML = renderReports(); afterReportsRender(); }
+  if (!c) return;
+
+  try {
+    if(STATE.screen==='dashboard') c.innerHTML = renderDashboard();
+    else if(STATE.screen==='inbox'){ c.innerHTML = renderInbox(); afterInboxRender(); }
+    else if(STATE.screen==='orders'){ c.innerHTML = STATE.orderDetailId ? renderOrderDetail() : renderOrders(); }
+    else if(STATE.screen==='inventory'){ c.innerHTML = renderInventory(); afterInventoryRender(); }
+    else if(STATE.screen==='offers') c.innerHTML = renderOffers();
+    else if(STATE.screen==='shipments') c.innerHTML = renderShipments();
+    else if(STATE.screen==='employees') c.innerHTML = renderEmployees();
+    else if(STATE.screen==='expenses'){ c.innerHTML = renderExpenses(); afterExpensesRender(); }
+    else if(STATE.screen==='reports'){ c.innerHTML = renderReports(); afterReportsRender(); }
+  } catch(err) {
+    console.error('Error rendering screen', STATE.screen, err);
+  }
 }
 
 /* ============================= DASHBOARD ============================= */
@@ -4665,28 +4673,44 @@ function renderReports(){
     </div>`;
 }
 
+let salesChartInstance = null;
+let statusChartInstance = null;
+
 function afterReportsRender(){
   const salesEl = document.getElementById('salesChart');
   if(salesEl && window.Chart){
+    const existingChart = Chart.getChart(salesEl);
+    if(existingChart) existingChart.destroy();
+    if(salesChartInstance) { salesChartInstance.destroy(); salesChartInstance = null; }
+
     const days = Array.from({length:14}).map((_,i)=>{const d=new Date(2026,6,15+i); return d.getDate()+'/'+(d.getMonth()+1);});
     const data = [42000,38500,51000,47500,60200,55000,72300,68000,81500,76200,90100,85300,98700,112400];
-    new Chart(salesEl.getContext('2d'), {
-      type:'line',
-      data:{labels:days, datasets:[{label:'Revenue (NPR)', data, borderColor:'#EE501F', backgroundColor:'rgba(238,80,31,0.08)', fill:true, tension:0.35, pointRadius:3, borderWidth:2.5}]},
-      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-        scales:{x:{grid:{display:false}, ticks:{font:{size:10.5}}}, y:{grid:{color:'#EFEEEA'}, ticks:{font:{size:10.5}, callback:v=>'Rs.'+(v/1000)+'k'}}}}
-    });
+    try {
+      salesChartInstance = new Chart(salesEl.getContext('2d'), {
+        type:'line',
+        data:{labels:days, datasets:[{label:'Revenue (NPR)', data, borderColor:'#EE501F', backgroundColor:'rgba(238,80,31,0.08)', fill:true, tension:0.35, pointRadius:3, borderWidth:2.5}]},
+        options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+          scales:{x:{grid:{display:false}, ticks:{font:{size:10.5}}}, y:{grid:{color:'#EFEEEA'}, ticks:{font:{size:10.5}, callback:v=>'Rs.'+(v/1000)+'k'}}}}
+      });
+    } catch(e){ console.warn('Sales chart init warning:', e); }
   }
+
   const statusEl = document.getElementById('statusChart');
   if(statusEl && window.Chart){
+    const existingStatusChart = Chart.getChart(statusEl);
+    if(existingStatusChart) existingStatusChart.destroy();
+    if(statusChartInstance) { statusChartInstance.destroy(); statusChartInstance = null; }
+
     const counts = {pending:0,confirmed:0,shipped:0,delivered:0};
     ORDERS.forEach(o=>counts[o.status]=(counts[o.status]||0)+1);
-    new Chart(statusEl.getContext('2d'), {
-      type:'doughnut',
-      data:{labels:['Pending','Confirmed','Shipped','Delivered'], datasets:[{data:[counts.pending||1,counts.confirmed||1,counts.shipped||1,counts.delivered||1],
-        backgroundColor:['#9A9CA3','#2E5AA8','#B4740E','#1D7A56'], borderWidth:0}]},
-      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:9, font:{size:11}}}}, cutout:'65%'}
-    });
+    try {
+      statusChartInstance = new Chart(statusEl.getContext('2d'), {
+        type:'doughnut',
+        data:{labels:['Pending','Confirmed','Shipped','Delivered'], datasets:[{data:[counts.pending||1,counts.confirmed||1,counts.shipped||1,counts.delivered||1],
+          backgroundColor:['#9A9CA3','#2E5AA8','#B4740E','#1D7A56'], borderWidth:0}]},
+        options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:9, font:{size:11}}}}, cutout:'65%'}
+      });
+    } catch(e){ console.warn('Status chart init warning:', e); }
   }
 }
 
