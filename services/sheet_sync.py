@@ -464,10 +464,12 @@ def sync_google_sheet_data():
         sku = f"SA-{re.sub(r'[^A-Z0-9]', '', base_name.upper())[:6]}-{prod_counter:03d}"
         cat = categorize_product(base_name)
 
+        first_item = p_list[0]
         latest_item = p_list[-1]
         cost = latest_item['cost']
         price = latest_item['price']
-        p_date = latest_item['purchase_date']
+        first_p_date = first_item['purchase_date']
+        latest_p_date = latest_item['purchase_date']
         is_on_sale = base_name in products_on_sale
 
         p = Product(
@@ -479,8 +481,8 @@ def sync_google_sheet_data():
             on_offer=is_on_sale, # Set ON OFFER flag
             price=price if price > 0 else 1000.0,
             cost=cost if cost > 0 else 500.0,
-            stocked_on=p_date,
-            next_restock='2026-09-30'
+            stocked_on=first_p_date,
+            next_restock=latest_p_date if len(p_list) > 1 else '2026-09-15'
         )
         db.session.add(p)
         product_map[base_name] = p

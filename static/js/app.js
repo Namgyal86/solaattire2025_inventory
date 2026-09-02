@@ -1465,13 +1465,10 @@ function filterOrderProducts(query){
     }
     noMatchEl.textContent = `No products found matching "${query}"`;
     noMatchEl.style.display = 'block';
-  } else if (noMatchEl) {
-    noMatchEl.style.display = 'none';
-  }
+}
 }
 window.filterOrderProducts = filterOrderProducts;
 
-function toggleAdvancePayment(isPaid, calcTotal){
 function updateOrderCODCalculation(){
   const advInput = document.getElementById('co_advance_paid');
   const codInput = document.getElementById('co_cod_charge');
