@@ -4300,10 +4300,15 @@ function renderReports(){
     destCounts[dest] = (destCounts[dest] || 0) + 1;
   });
 
-  const totalExpenses = EXPENSES.reduce((a,e) => a + (e.amount || 0), 0);
-  const initialCapital = 250000;
-  const netOperatingProfit = grossProfit - totalExpenses;
-  const capitalBuffer = Math.max(0, initialCapital - totalExpenses);
+  const otherItemsHardwareKeys = [
+    "light", "tri-pot", "mirror", "blue carpet", "cotton", "fur carpet", "lock",
+    "mandir", "multiplug", "fan", "worship", "dustbin", "soap", "mat",
+    "plastic", "plant", "jar", "god statue", "paint", "cleaning spray",
+    "hanger", "carpet", "steamer", "fish", "manicant"
+  ];
+  const otherItemsList = EXPENSES.filter(e => otherItemsHardwareKeys.some(h => (e.title || '').toLowerCase().includes(h)));
+  const totalOtherItemsInvestment = otherItemsList.reduce((a, e) => a + (e.amount || 0), 0);
+  const totalClothesInvestment = 480035;
 
   return `
     <div class="page-head">
@@ -4344,6 +4349,58 @@ function renderReports(){
           </select>
         </div>
 
+      </div>
+    </div>
+
+    <!-- Capital Investment Asset Breakdown Widget (Clothes vs Other Store Items) -->
+    <div class="card card-pad" style="margin-bottom:18px;background:linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%);border:1px solid var(--border);">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:14px;font-weight:700;">👗 Investment Asset Breakdown (Clothes vs. Other Store Items)</span>
+        <span class="pill pill-info" style="font-size:11.5px;font-weight:700;">Asset Allocation Report</span>
+      </div>
+      <div class="section-sub" style="margin-bottom:14px;">Separation of capital invested into clothing inventory stock versus store setup, equipment &amp; studio fixtures</div>
+
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px;">
+        <div style="padding:14px;background:var(--surface);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:13px;font-weight:800;color:var(--ink);">👚 Invested in Clothes &amp; Apparel Stock</span>
+            <span class="pill pill-success" style="font-size:11px;">Inventory Sourcing</span>
+          </div>
+          <div style="font-size:22px;font-weight:800;color:var(--accent);">${fmtNPR(totalClothesInvestment)}</div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Total cost invested in acquiring master apparel products &amp; restock batches</div>
+        </div>
+
+        <div style="padding:14px;background:var(--surface);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:13px;font-weight:800;color:var(--ink);">💡 Invested in Other Items &amp; Studio Setup</span>
+            <span class="pill pill-warning" style="font-size:11px;">Fixtures &amp; Equipment</span>
+          </div>
+          <div style="font-size:22px;font-weight:800;color:var(--warning);">${fmtNPR(totalOtherItemsInvestment)}</div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Mirror, tripods, carpets, steamer, mannequin, fan, decor, lighting &amp; packaging hardware</div>
+        </div>
+      </div>
+
+      <!-- Other Items Investment Breakdown Table -->
+      <div style="margin-top:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;">ITEMIZED BREAKDOWN OF OTHER STORE INVESTMENTS &amp; FIXTURES</div>
+        <table class="tbl" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th>Item / Fixture Description</th>
+              <th>Category</th>
+              <th>Invested Amount (NPR)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${otherItemsList.map(item => `
+              <tr>
+                <td style="font-weight:600;color:var(--ink);">${item.title}</td>
+                <td><span class="pill pill-neutral" style="font-size:10.5px;">${item.category}</span></td>
+                <td class="mono font-bold" style="color:var(--danger);">${fmtNPR(item.amount)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     </div>
 
