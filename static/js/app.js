@@ -4300,6 +4300,7 @@ function updateReportCustomDates(){
 window.updateReportCustomDates = updateReportCustomDates;
 
 function renderReports(){
+  const tf = STATE.reportTimeframe || 'all';
   const start = new Date(STATE.reportStartDate);
   const end = new Date(STATE.reportEndDate);
   end.setHours(23, 59, 59, 999);
