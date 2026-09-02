@@ -883,21 +883,26 @@ function renderDashboard(){
         <button class="btn btn-secondary btn-sm" onclick="navigate('reports')">Full Sales Report →</button>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;">
+        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">INITIAL CAPITAL</div>
+          <div style="font-size:18px;font-weight:800;color:var(--accent);margin-top:2px;">${fmtNPR(250000)}</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Seed Investment</div>
+        </div>
+        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
+          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">OPERATING EXPENSES</div>
+          <div style="font-size:18px;font-weight:800;color:var(--danger);margin-top:2px;">${fmtNPR(EXPENSES.reduce((a,e)=>a+(e.amount||0),0))}</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Total Outflow</div>
+        </div>
         <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
           <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">GROSS PROFIT MARGIN</div>
-          <div style="font-size:20px;font-weight:800;color:var(--success);margin-top:2px;">${grossMarginPct}%</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Net Profit: ${fmtNPR(grossProfit)}</div>
+          <div style="font-size:18px;font-weight:800;color:var(--success);margin-top:2px;">${grossMarginPct}%</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Profit: ${fmtNPR(grossProfit)}</div>
         </div>
         <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
-          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">TOTAL UNITS SOLD</div>
-          <div style="font-size:20px;font-weight:800;color:var(--ink);margin-top:2px;">${totalUnitsSold} pcs</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Sales Volume</div>
-        </div>
-        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border-soft);">
-          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">AVERAGE ORDER VALUE</div>
-          <div style="font-size:20px;font-weight:800;color:var(--accent);margin-top:2px;">${fmtNPR(avgOrderVal)}</div>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Per Order Basket</div>
+          <div style="font-size:11.5px;color:var(--ink-faint);font-weight:600;">UNSOLD STOCK ASSET</div>
+          <div style="font-size:18px;font-weight:800;color:var(--info);margin-top:2px;">${fmtNPR(PRODUCTS.reduce((a,p)=>a+p.variants.reduce((va,v)=>va+(v.stock*p.price),0),0))}</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Retail Value</div>
         </div>
       </div>
 
@@ -4295,7 +4300,10 @@ function renderReports(){
     destCounts[dest] = (destCounts[dest] || 0) + 1;
   });
 
-  const tf = STATE.reportTimeframe;
+  const totalExpenses = EXPENSES.reduce((a,e) => a + (e.amount || 0), 0);
+  const initialCapital = 250000;
+  const netOperatingProfit = grossProfit - totalExpenses;
+  const capitalBuffer = Math.max(0, initialCapital - totalExpenses);
 
   return `
     <div class="page-head">
@@ -4339,6 +4347,41 @@ function renderReports(){
       </div>
     </div>
 
+    <!-- Capital Investment & Financial Ledger Overview Widget -->
+    <div class="card card-pad" style="margin-bottom:18px;background:var(--bg);border:1px solid var(--border);">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:14px;font-weight:700;">💼 Capital Investment &amp; Financial Ledger</span>
+        <span class="pill pill-success" style="font-size:11.5px;font-weight:700;">Initial Seed: ${fmtNPR(initialCapital)}</span>
+      </div>
+      <div class="section-sub" style="margin-bottom:14px;">Capital allocation, gross profit, operating expense outflow &amp; net operating balance</div>
+      
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:0;">
+        <div class="card stat-card" style="background:var(--surface);">
+          <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('money')}</div>
+          <div class="stat-value">${fmtNPR(initialCapital)}</div>
+          <div class="stat-label">Initial Seed Capital</div>
+        </div>
+
+        <div class="card stat-card" style="background:var(--surface);">
+          <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('trend')}</div>
+          <div class="stat-value">${fmtNPR(grossProfit)}</div>
+          <div class="stat-label">Gross Profit (Revenue - COGS)</div>
+        </div>
+
+        <div class="card stat-card" style="background:var(--surface);">
+          <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
+          <div class="stat-value">${fmtNPR(totalExpenses)}</div>
+          <div class="stat-label">Operating Expenses Outflow</div>
+        </div>
+
+        <div class="card stat-card" style="background:var(--surface);">
+          <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('box')}</div>
+          <div class="stat-value">${fmtNPR(capitalBuffer)}</div>
+          <div class="stat-label">Remaining Capital Buffer</div>
+        </div>
+      </div>
+    </div>
+
     <!-- KPI Summary Cards -->
     <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
       <div class="card stat-card">
@@ -4351,7 +4394,7 @@ function renderReports(){
         <span class="stat-trend trend-up">${grossMarginPct}% profit margin</span>
         <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('trend')}</div>
         <div class="stat-value">${fmtNPR(grossProfit)}</div>
-        <div class="stat-label">Estimated Net Profit</div>
+        <div class="stat-label">Gross Profit Margin</div>
       </div>
 
       <div class="card stat-card">
