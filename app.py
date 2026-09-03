@@ -19,8 +19,9 @@ from controllers.expense_controller import expense_bp
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
 
+basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'sola_attire_secret_2026')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///thulo_studio.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "thulo_studio.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize DB with App
