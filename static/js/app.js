@@ -1,3 +1,17 @@
+// Dynamic Fetch Prefix Interceptor for Subpath Mounting (e.g. /solaattire/api/...)
+(function() {
+  const originalFetch = window.fetch;
+  let pathPrefix = window.location.pathname.replace(/\/+$/, '');
+  if (pathPrefix && pathPrefix !== '') {
+    window.fetch = function(url, options) {
+      if (typeof url === 'string' && url.startsWith('/api/')) {
+        url = pathPrefix + url;
+      }
+      return originalFetch.call(this, url, options);
+    };
+  }
+})();
+
 /* ============================= ICONS ============================= */
 const ICONS = {
   dashboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
