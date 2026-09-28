@@ -382,7 +382,7 @@ const TITLES = {
 
 function renderSidebar(){
   let html = `<div class="brand">
-    <div class="brand-tag">${icon('tag')}</div>
+    <img src="/static/img/sola_logo.jpg" alt="Sola Attire Logo" class="brand-logo-img" onerror="this.onerror=null;this.src='static/img/sola_logo.jpg';">
     <div><div class="brand-name">SOLA ATTIRE</div><div class="brand-sub">OPS CONSOLE</div></div>
   </div>`;
   NAV.forEach(g=>{
@@ -1956,7 +1956,13 @@ function renderOrders(){
         <td class="mono font-bold" style="color:var(--accent);">${fmtNPR(o.total)}</td>
         <td>${statusPill(o.status)}</td>
         <td>${formatOrderDateTime(o)}</td>
-        <td>${actionBtn}</td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${actionBtn}
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openEditOrderModal('${o.id}')" style="padding:4px 8px;font-size:11px;" title="Edit Order">${icon('edit')}</button>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();deleteOrder('${o.id}')" style="padding:4px 8px;font-size:11px;color:var(--danger);" title="Delete Order">${icon('trash')}</button>
+          </div>
+        </td>
       </tr>`;
   }).join('');
 
@@ -2100,7 +2106,11 @@ function renderOrderDetail(){
     <div class="page-head">
       <div><button class="btn btn-ghost btn-sm" onclick="STATE.orderDetailId=null;renderAll();" style="margin-bottom:8px;">&larr; Back to orders</button>
       <h1 class="mono">${o.id}</h1><p class="page-sub">Placed on ${o.date} via Instagram DM</p></div>
-      ${statusPill(o.status)}
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        ${statusPill(o.status)}
+        <button class="btn btn-secondary btn-sm" onclick="openEditOrderModal('${o.id}')" title="Edit Order Details">${icon('edit')} Edit Order</button>
+        <button class="btn btn-secondary btn-sm" onclick="deleteOrder('${o.id}')" style="color:var(--danger);" title="Delete Order">${icon('trash')} Delete</button>
+      </div>
     </div>
     
     ${actionBanner}
@@ -2143,6 +2153,140 @@ async function setOrderStatus(id, status){
   }
 }
 window.setOrderStatus = setOrderStatus;
+
+function openEditOrderModal(id){
+  const o = ORDERS.find(x => x.id === id);
+  if (!o) return;
+  const s = SHIPMENTS.find(sh => sh.order === id) || {};
+  const dateStr = o.date ? o.date.slice(0, 10) : new Date().toISOString().split('T')[0];
+
+  document.getElementById('modalOverlay').innerHTML = `
+    <div class="modal" style="width:520px;max-width:94vw;">
+      <div class="modal-head">
+        <h3>Edit Order ${o.id}</h3>
+        <button class="close-x" onclick="closeModal()">${icon('close')}</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="submitEditOrderForm(event, '${o.id}')">
+          <div class="field-row">
+            <div class="field">
+              <label>Customer Name *</label>
+              <input id="edit_ord_customer" value="${o.customer || ''}" placeholder="Customer Full Name" required>
+            </div>
+            <div class="field">
+              <label>Social Handle *</label>
+              <input id="edit_ord_handle" value="${o.handle || ''}" placeholder="@handle" required>
+            </div>
+          </div>
+
+          <div class="field-row" style="margin-top:12px;">
+            <div class="field">
+              <label>Phone Number</label>
+              <input id="edit_ord_phone" value="${s.phone || ''}" placeholder="e.g. 9807547457">
+            </div>
+            <div class="field">
+              <label>Order Date *</label>
+              <input type="date" id="edit_ord_date" value="${dateStr}" required>
+            </div>
+          </div>
+
+          <div class="field-row" style="margin-top:12px;">
+            <div class="field">
+              <label>Delivery Address</label>
+              <input id="edit_ord_address" value="${s.address || ''}" placeholder="e.g. New Road, Pokhara">
+            </div>
+            <div class="field">
+              <label>NCM Destination Branch</label>
+              <input id="edit_ord_dest" value="${s.dest || 'KATHMANDU'}" placeholder="e.g. KATHMANDU / POKHARA">
+            </div>
+          </div>
+
+          <div class="field-row" style="margin-top:12px;">
+            <div class="field">
+              <label>Order Status *</label>
+              <select id="edit_ord_status">
+                <option value="pending" ${o.status==='pending'?'selected':''}>Pending</option>
+                <option value="confirmed" ${o.status==='confirmed'?'selected':''}>Confirmed</option>
+                <option value="packed" ${o.status==='packed'?'selected':''}>Package Packed</option>
+                <option value="shipped" ${o.status==='shipped'||o.status==='in-transit'?'selected':''}>Shipped / Dispatched</option>
+                <option value="delivered" ${o.status==='delivered'?'selected':''}>Delivered</option>
+                <option value="cancelled" ${o.status==='cancelled'?'selected':''}>Cancelled</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Advance Paid (NPR)</label>
+              <input type="number" step="0.01" id="edit_ord_advance" value="${o.advancePaid || o.advance_paid || 0}" placeholder="0">
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label>Total Order Amount (NPR) *</label>
+            <input type="number" step="0.01" id="edit_ord_total" value="${o.total}" placeholder="Total NPR" required>
+          </div>
+
+          <div class="modal-foot" style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">${icon('check')} Save Order Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+window.openEditOrderModal = openEditOrderModal;
+
+async function submitEditOrderForm(event, oid){
+  event.preventDefault();
+  const payload = {
+    customer: document.getElementById('edit_ord_customer').value.trim(),
+    handle: document.getElementById('edit_ord_handle').value.trim(),
+    phone: document.getElementById('edit_ord_phone').value.trim(),
+    address: document.getElementById('edit_ord_address').value.trim(),
+    destination: document.getElementById('edit_ord_dest').value.trim(),
+    status: document.getElementById('edit_ord_status').value,
+    advancePaid: parseFloat(document.getElementById('edit_ord_advance').value) || 0,
+    total: parseFloat(document.getElementById('edit_ord_total').value) || 0,
+    date: document.getElementById('edit_ord_date').value
+  };
+
+  try {
+    const res = await fetch(`/api/orders/${oid}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      toast(`Order ${oid} updated successfully`);
+      closeModal();
+      await fetchAllData();
+    } else {
+      toast('Failed to update order', 'error');
+    }
+  } catch (err) {
+    toast('Error updating order', 'error');
+  }
+}
+window.submitEditOrderForm = submitEditOrderForm;
+
+async function deleteOrder(oid){
+  if (!confirm(`Are you sure you want to delete order ${oid}? This will remove the order record and restore item inventory stock.`)) return;
+  try {
+    const res = await fetch(`/api/orders/${oid}`, { method: 'DELETE' });
+    if (res.ok) {
+      toast(`Order ${oid} deleted & stock restored`);
+      if (STATE.orderDetailId === oid) {
+        STATE.orderDetailId = null;
+      }
+      await fetchAllData();
+    } else {
+      toast('Failed to delete order', 'error');
+    }
+  } catch (err) {
+    toast('Error deleting order', 'error');
+  }
+}
+window.deleteOrder = deleteOrder;
 
 /* ============================= INVENTORY ============================= */
 function renderInventory(){
@@ -4049,9 +4193,8 @@ function renderExpenses(){
   }, 0);
   const netProfit = totalRevenue - totalCOGS - totalExpense;
 
-  const initialCapital = 250000;
-  const remainingCapitalBuffer = Math.max(0, initialCapital - totalExpense);
-  const capitalUtilizedPct = Math.min(100, Math.round((totalExpense / initialCapital) * 100));
+  const netCashBalance = totalRevenue - totalExpense;
+  const netOperatingProfit = totalRevenue - totalCOGS - totalExpense;
 
   const rowsHtml = list.length ? list.map(e => `
     <tr>
@@ -4081,32 +4224,34 @@ function renderExpenses(){
       <button class="btn btn-primary" onclick="openExpenseModal()">${icon('plus')} Add New Expense</button>
     </div>
 
-    <!-- Total Inflow, Expenses Outflow & Available Cash Balance Grid -->
+    <!-- Audited Cash Flow & Expense Outflow Summary Cards -->
     <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
       <div class="card stat-card">
-        <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('money')}</div>
-        <div class="stat-value">${fmtNPR(initialCapital)}</div>
-        <div class="stat-label">Initial Seed Capital Sourced</div>
-      </div>
-
-      <div class="card stat-card">
-        <span class="stat-trend trend-up">Sales Inflow</span>
+        <span class="stat-trend trend-up">${ORDERS.length} Orders</span>
         <div class="stat-icon" style="background:var(--success-soft);color:var(--success);">${icon('orders')}</div>
         <div class="stat-value">${fmtNPR(totalRevenue)}</div>
         <div class="stat-label">Gross Sales Revenue Inflow</div>
       </div>
 
       <div class="card stat-card">
+        <span class="stat-trend trend-down">${EXPENSES.length} Recorded</span>
         <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
-        <div class="stat-value">${fmtNPR(totalExpense)}</div>
-        <div class="stat-label">Total Expenses (Setup + Running)</div>
+        <div class="stat-value" style="color:var(--danger);">${fmtNPR(totalExpense)}</div>
+        <div class="stat-label">Total Operating Expenses</div>
       </div>
 
       <div class="card stat-card">
-        <span class="stat-trend trend-up">Net Cash</span>
+        <span class="stat-trend ${netCashBalance >= 0 ? 'trend-up' : 'trend-down'}">Net Cash</span>
         <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('trend')}</div>
-        <div class="stat-value">${fmtNPR(initialCapital + totalRevenue - totalExpense)}</div>
+        <div class="stat-value" style="color:${netCashBalance >= 0 ? 'var(--info)' : 'var(--danger)'};">${fmtNPR(netCashBalance)}</div>
         <div class="stat-label">Net Available Cash Balance</div>
+      </div>
+
+      <div class="card stat-card">
+        <span class="stat-trend ${netOperatingProfit >= 0 ? 'trend-up' : 'trend-down'}">${netOperatingProfit >= 0 ? 'Surplus' : 'Net Deficit'}</span>
+        <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('money')}</div>
+        <div class="stat-value" style="color:${netOperatingProfit >= 0 ? 'var(--success)' : 'var(--warning)'};">${fmtNPR(netOperatingProfit)}</div>
+        <div class="stat-label">Net Operating Result</div>
       </div>
     </div>
 
@@ -4514,15 +4659,15 @@ function renderReports(){
     <div class="card card-pad" style="margin-bottom:18px;background:var(--bg);border:1px solid var(--border);">
       <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
         <span style="font-size:14px;font-weight:700;">💼 Total Cash Inflow &amp; Net Available Cash Balance</span>
-        <span class="pill pill-success" style="font-size:11.5px;font-weight:700;">Net Balance: ${fmtNPR(initialCapital + totalRevenue - totalExpenses)}</span>
+        <span class="pill pill-success" style="font-size:11.5px;font-weight:700;">Net Balance: ${fmtNPR(totalRevenue - totalExpenses)}</span>
       </div>
-      <div class="section-sub" style="margin-bottom:14px;">Combined seed capital + sales revenue inflow minus all setup and operational expenses</div>
+      <div class="section-sub" style="margin-bottom:14px;">Audited cash flow: Total sales revenue collected minus all operational costs, rent, staff salaries &amp; ad boosting</div>
       
       <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:0;">
         <div class="card stat-card" style="background:var(--surface);">
-          <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('money')}</div>
-          <div class="stat-value">${fmtNPR(initialCapital)}</div>
-          <div class="stat-label">Initial Seed Capital Sourced</div>
+          <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('box')}</div>
+          <div class="stat-value">${fmtNPR(totalCOGS + remainingStockCostVal)}</div>
+          <div class="stat-label">Total Apparel Sourced (Cost)</div>
         </div>
 
         <div class="card stat-card" style="background:var(--surface);">
@@ -4534,13 +4679,13 @@ function renderReports(){
         <div class="card stat-card" style="background:var(--surface);">
           <div class="stat-icon" style="background:var(--danger-soft);color:var(--danger);">${icon('wallet')}</div>
           <div class="stat-value">${fmtNPR(totalExpenses)}</div>
-          <div class="stat-label">Total Expenses (Setup + Running)</div>
+          <div class="stat-label">Total Operating Expenses</div>
         </div>
 
         <div class="card stat-card" style="background:var(--surface);">
-          <span class="stat-trend trend-up">Net Cash</span>
+          <span class="stat-trend ${(totalRevenue - totalExpenses) >= 0 ? 'trend-up' : 'trend-down'}">Net Cash</span>
           <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('trend')}</div>
-          <div class="stat-value">${fmtNPR(initialCapital + totalRevenue - totalExpenses)}</div>
+          <div class="stat-value" style="color:${(totalRevenue - totalExpenses) >= 0 ? 'var(--info)' : 'var(--danger)'};">${fmtNPR(totalRevenue - totalExpenses)}</div>
           <div class="stat-label">Net Available Cash Balance</div>
         </div>
       </div>
@@ -4556,7 +4701,7 @@ function renderReports(){
       </div>
 
       <div class="card stat-card" style="border-left:4px solid var(--accent);">
-        <span class="stat-trend trend-up">517 Orders</span>
+        <span class="stat-trend trend-up">${filteredOrders.length} Orders</span>
         <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-soft-ink);">${icon('trend')}</div>
         <div class="stat-value" style="color:var(--accent);font-size:22px;font-weight:800;">${fmtNPR(totalRevenue)}</div>
         <div class="stat-label" style="font-weight:700;">GROSS SALES REVENUE</div>
@@ -4569,9 +4714,10 @@ function renderReports(){
       </div>
 
       <div class="card stat-card" style="border-left:4px solid var(--info);">
+        <span class="stat-trend trend-neutral">Cost: ${fmtNPR(remainingStockCostVal)}</span>
         <div class="stat-icon" style="background:var(--info-soft);color:var(--info);">${icon('inventory')}</div>
-        <div class="stat-value" style="color:var(--info);font-size:22px;font-weight:800;">${fmtNPR(PRODUCTS.reduce((a,p)=>a+p.variants.reduce((va,v)=>va+(v.stock*p.price),0),0))}</div>
-        <div class="stat-label" style="font-weight:700;">UNSOLD STOCK ASSET</div>
+        <div class="stat-value" style="color:var(--info);font-size:22px;font-weight:800;">${fmtNPR(remainingStockSalesVal)}</div>
+        <div class="stat-label" style="font-weight:700;">UNSOLD STOCK ASSET (RETAIL)</div>
       </div>
     </div>
 

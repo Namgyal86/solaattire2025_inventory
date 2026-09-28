@@ -133,3 +133,98 @@ def update_order_status(oid):
                 shipment.status = 'delivered'
         db.session.commit()
     return jsonify(order.to_dict())
+
+@order_bp.route('/api/orders/<oid>', methods=['PUT'])
+def update_order(oid):
+    order = Order.query.get_or_404(oid)
+    data = request.json or {}
+
+    if 'customer' in data: order.customer = data['customer']
+    if 'handle' in data: order.handle = data['handle']
+    if 'status' in data: order.status = data['status']
+    if 'total' in data: order.total = float(data['total'])
+    if 'advancePaid' in data: order.advance_paid = float(data['advancePaid'])
+    elif 'advance_paid' in data: order.advance_paid = float(data['advance_paid'])
+    if 'date' in data and data['date']: order.date = data['date']
+
+    # Update associated shipment details if provided
+    shipment = Shipment.query.filter_by(order_id=oid).first()
+    if shipment:
+        if 'customer' in data: shipment.customer = data['customer']
+        if 'phone' in data: shipment.phone = data['phone']
+        if 'address' in data: shipment.address = data['address']
+        if 'destination' in data: shipment.dest = data['destination']
+        if 'fbranch' in data: shipment.fbranch = data['fbranch']
+        if 'total' in data: shipment.cod = float(data['total'])
+
+    # Optional item updates if passed
+    if 'items' in data and isinstance(data['items'], list):
+        # Restore stock from old items before replacing
+        for old_item in order.items:
+            prod = Product.query.filter_by(name=old_item.name).first()
+            if prod:
+                parts = (old_item.variant or '').split('/')
+                size_str = parts[0].strip() if len(parts) >= 1 else ''
+                color_str = parts[1].strip() if len(parts) >= 2 else ''
+                var = Variant.query.filter_by(product_id=prod.id, size=size_str, color=color_str).first() or \
+                      Variant.query.filter_by(product_id=prod.id, size=size_str).first() or \
+                      Variant.query.filter_by(product_id=prod.id).first()
+                if var:
+                    var.stock += old_item.qty
+
+        # Clear old items
+        OrderItem.query.filter_by(order_id=oid).delete()
+
+        # Add new items & deduct stock
+        items_data = data['items']
+        for it in items_data:
+            new_item = OrderItem(
+                order_id=oid,
+                name=it.get('name', 'Product'),
+                variant=it.get('variant', 'Standard'),
+                qty=int(it.get('qty', 1)),
+                price=float(it.get('price', 0))
+            )
+            db.session.add(new_item)
+
+            prod = Product.query.filter_by(name=it.get('name')).first()
+            if prod:
+                parts = (it.get('variant', '')).split('/')
+                size_str = parts[0].strip() if len(parts) >= 1 else ''
+                color_str = parts[1].strip() if len(parts) >= 2 else ''
+                var = Variant.query.filter_by(product_id=prod.id, size=size_str, color=color_str).first() or \
+                      Variant.query.filter_by(product_id=prod.id, size=size_str).first() or \
+                      Variant.query.filter_by(product_id=prod.id).first()
+                if var:
+                    var.stock = max(0, var.stock - new_item.qty)
+
+        if shipment:
+            shipment.package_desc = ", ".join([f"{it.get('qty',1)}x {it.get('name','')}" for it in items_data]) or "Apparel / Clothes"
+
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': 'Order updated successfully', 'order': order.to_dict()})
+
+@order_bp.route('/api/orders/<oid>', methods=['DELETE'])
+def delete_order(oid):
+    order = Order.query.get_or_404(oid)
+
+    # Restore variant inventory stock for all order items
+    for item in order.items:
+        prod = Product.query.filter_by(name=item.name).first()
+        if prod:
+            parts = (item.variant or '').split('/')
+            size_str = parts[0].strip() if len(parts) >= 1 else ''
+            color_str = parts[1].strip() if len(parts) >= 2 else ''
+            var = Variant.query.filter_by(product_id=prod.id, size=size_str, color=color_str).first() or \
+                  Variant.query.filter_by(product_id=prod.id, size=size_str).first() or \
+                  Variant.query.filter_by(product_id=prod.id).first()
+            if var:
+                var.stock += item.qty
+
+    # Delete OrderItems, Shipment, and Order
+    OrderItem.query.filter_by(order_id=oid).delete()
+    Shipment.query.filter_by(order_id=oid).delete()
+    db.session.delete(order)
+
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': f'Order {oid} deleted successfully & stock restored'})
