@@ -70,10 +70,29 @@ def seed_expenses():
     db.session.commit()
     print("Real Operational Expenses seeded successfully (Total: Rs. 149,065.31)!")
 
+def seed_users():
+    from models.user import User
+    import werkzeug.security as security
+    import json, datetime
+
+    if not User.query.filter_by(username='admin').first():
+        admin_user = User(
+            username='admin',
+            password_hash=security.generate_password_hash('admin123'),
+            name='Super Admin',
+            role='admin',
+            permissions=json.dumps(['inbox', 'orders', 'products', 'offers', 'shipments', 'employees', 'reports', 'expenses']),
+            created=datetime.datetime.now().strftime('%Y-%m-%d')
+        )
+        db.session.add(admin_user)
+        db.session.commit()
+        print("Admin user seeded: admin / admin123")
+
 if __name__ == '__main__':
     with app.app_context():
         print("Initializing & Syncing Real Sola Attire Store Data...")
         res = sync_google_sheet_data()
         seed_expenses()
+        seed_users()
         print("Data Sync Result:", res)
         print("Real business inventory, sales & expense data loaded successfully!")

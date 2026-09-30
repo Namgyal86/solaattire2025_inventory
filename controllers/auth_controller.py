@@ -3,14 +3,15 @@ from models import db
 from models.user import User
 import werkzeug.security as security
 import datetime, json
+from helpers import to_str
 
 auth_bp = Blueprint('auth_bp', __name__)
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
 def login():
     data = request.json or {}
-    username = str(data.get('username', '')).strip().lower()
-    password = str(data.get('password', '')).strip()
+    username = to_str(data.get('username')).lower()
+    password = to_str(data.get('password'))
 
     if not username:
         return jsonify({'error': 'Username is required', 'field': 'username'}), 400
@@ -72,11 +73,11 @@ def get_users():
 @auth_bp.route('/api/auth/users', methods=['POST'])
 def create_user():
     data = request.json or {}
-    username = str(data.get('username', '')).strip().lower()
-    password = str(data.get('password', '')).strip()
-    name = str(data.get('name', '')).strip() or username
-    role = str(data.get('role', 'employee')).strip()
-    permissions = data.get('permissions', ['inbox', 'orders', 'products', 'offers', 'shipments'])
+    username = to_str(data.get('username')).lower()
+    password = to_str(data.get('password'))
+    name = to_str(data.get('name')) or username
+    role = to_str(data.get('role'), 'employee') or 'employee'
+    permissions = data.get('permissions') if isinstance(data.get('permissions'), list) else ['inbox', 'orders', 'products', 'offers', 'shipments']
 
     if not username or not password:
         return jsonify({'error': 'Username and password are required'}), 400
@@ -111,10 +112,10 @@ def update_user_permissions(user_id):
     permissions = data.get('permissions')
     role = data.get('role')
     
-    if permissions is not None:
+    if permissions is not None and isinstance(permissions, list):
         user.permissions = json.dumps(permissions)
     if role is not None:
-        user.role = role
+        user.role = to_str(role, user.role)
 
     db.session.commit()
     return jsonify({'success': True, 'user': user.to_dict()})
