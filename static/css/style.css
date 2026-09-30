@@ -903,6 +903,31 @@ table.tbl {
 
   /* Login Card */
   .login-card { width: 94vw !important; padding: 20px 14px !important; }
+
+  /* Table & Content Cards Responsiveness */
+  .tbl-container, div:has(> table.tbl), .card:has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+  
+  .variant-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    background: var(--bg) !important;
+    border-radius: 8px !important;
+    margin-bottom: 8px !important;
+  }
+  .variant-row input {
+    width: 100% !important;
+  }
+  .variant-remove-btn {
+    grid-column: span 2 !important;
+    width: 100% !important;
+    justify-content: center !important;
+  }
 }
 
 @media (min-width: 769px){
@@ -911,10 +936,14 @@ table.tbl {
 
 @media (max-width: 480px){
   #topbar { padding: 0 8px !important; }
-  .topbar-title { font-size: 13px !important; max-width: 100px; }
+  .topbar-title { font-size: 13px !important; max-width: 110px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
   .search-box-wrap { display: none; }
-  .stat-grid { grid-template-columns: 1fr !important; }
+  .stat-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
   .btn { font-size: 11.5px !important; padding: 7px 10px !important; }
-  .modal { width: 98vw !important; max-width: 98vw !important; }
-  .stat-value { font-size: 20px !important; }
+  .modal { width: 98vw !important; max-width: 98vw !important; padding: 10px !important; }
+  .stat-value { font-size: 18px !important; }
+  .page-head h1 { font-size: 17px !important; }
+  .td-flex { gap: 6px !important; }
+  .thumb { width: 28px !important; height: 28px !important; }
 }
+

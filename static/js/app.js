@@ -2336,7 +2336,12 @@ function renderInventory(){
         <div class="${restockOverdue?'':'td-title'}" style="${restockOverdue?'color:var(--danger);font-weight:700;font-size:13px;':''}">${restockOverdue?'⚠ ':''}Restock ${fmtDate(p.nextRestock)}</div>
       </td>
       <td>${lowVariants>0?`<span class="pill pill-warning"><span class="pill-dot" style="background:currentColor;"></span>${lowVariants} low stock</span>`:`<span class="pill pill-success"><span class="pill-dot" style="background:currentColor;"></span>In stock</span>`}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openProductModal('${p.id}')">${icon('edit')} Edit</button></td>
+      <td>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openProductModal('${p.id}')">${icon('edit')} Edit</button>
+          <button class="btn btn-danger-outline btn-sm" onclick="event.stopPropagation();confirmDeleteProduct('${p.id}')">${icon('trash')} Delete</button>
+        </div>
+      </td>
     </tr>
     <tr class="expand-row ${expanded?'':'hidden'}"><td colspan="7">
       <div class="variant-table"><table><thead><tr><th>Size</th><th>Color</th><th>Stock</th><th>Profit potential</th><th>Status</th></tr></thead><tbody>${variantRows}</tbody></table></div>
@@ -2457,6 +2462,7 @@ function openProductModal(pid){
         </div>
       </div>
       <div class="modal-foot">
+        ${p ? `<button class="btn btn-danger-outline" onclick="confirmDeleteProduct('${p.id}')" style="margin-right:auto;">${icon('trash')} Delete product</button>` : ''}
         <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" onclick="saveProductModal('${p?p.id:''}')">${icon('check')} Save product</button>
       </div>
@@ -2464,6 +2470,29 @@ function openProductModal(pid){
   document.getElementById('modalOverlay').classList.add('show');
 }
 window.openProductModal = openProductModal;
+
+async function confirmDeleteProduct(pid){
+  const p = PRODUCTS.find(x=>x.id===pid);
+  if(!p) return;
+  if(!confirm(`Are you sure you want to delete product "${p.name}" (SKU: ${p.sku})?\n\nThis will remove all variants and cannot be undone.`)) return;
+
+  try {
+    const res = await fetch(`/api/products/${pid}`, { method: 'DELETE' });
+    const data = await res.json();
+    if(res.ok){
+      toast(`Product "${p.name}" deleted successfully`);
+      const modalOverlay = document.getElementById('modalOverlay');
+      if (modalOverlay) modalOverlay.classList.remove('show');
+      await fetchAllData();
+      renderAll();
+    } else {
+      toast(data.error || 'Failed to delete product', 'error');
+    }
+  } catch(e) {
+    toast('Server error deleting product', 'error');
+  }
+}
+window.confirmDeleteProduct = confirmDeleteProduct;
 
 function variantRowHtml(v){
   return `<div class="variant-row">
