@@ -96,6 +96,67 @@ function toast(msg, type = 'success'){
   window._toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+function showModalError(msg) {
+  let banner = document.getElementById('modalErrorBanner');
+  let textEl = document.getElementById('modalErrorMsg');
+  if (!banner) {
+    const modalBody = document.querySelector('.modal-body');
+    if (modalBody) {
+      banner = document.createElement('div');
+      banner.id = 'modalErrorBanner';
+      banner.className = 'modal-error-banner';
+      banner.style.cssText = 'background:#FEF2F2;border:1.5px solid #FCA5A5;color:#DC2626;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(220,38,38,0.1);';
+      banner.innerHTML = `<span style="font-size:15px;flex-shrink:0;">⚠️</span><span id="modalErrorMsg">${msg}</span>`;
+      modalBody.insertBefore(banner, modalBody.firstChild);
+      toast(msg, 'error');
+      return;
+    }
+  }
+  if (banner && textEl) {
+    textEl.textContent = msg;
+    banner.style.display = 'flex';
+  }
+  toast(msg, 'error');
+}
+window.showModalError = showModalError;
+
+function hideModalError() {
+  const banner = document.getElementById('modalErrorBanner');
+  if (banner) banner.style.display = 'none';
+}
+window.hideModalError = hideModalError;
+
+function openConfirmModal({ title, message, confirmText = 'Delete', confirmClass = 'btn-danger-outline', onConfirm }) {
+  document.getElementById('modalOverlay').innerHTML = `
+    <div class="modal" style="max-width: 440px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+      <div class="modal-head" style="border-bottom: 1px solid var(--border); padding: 16px 20px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;color:var(--danger);font-weight:700;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:var(--danger-soft);border-radius:8px;color:var(--danger);">${icon('alert')}</span>
+          ${title || 'Confirm Action'}
+        </h3>
+        <button class="close-x" onclick="closeModal()">${icon('close')}</button>
+      </div>
+      <div class="modal-body" style="padding: 20px 24px;">
+        <p style="margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-soft);font-weight:500;">${message}</p>
+      </div>
+      <div class="modal-foot" style="padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn ${confirmClass}" id="confirmModalBtn">${confirmText}</button>
+      </div>
+    </div>`;
+
+  document.getElementById('confirmModalBtn').onclick = async () => {
+    try {
+      await onConfirm();
+    } catch(e) {
+      toast('Operation failed', 'error');
+    }
+  };
+
+  document.getElementById('modalOverlay').classList.add('show');
+}
+window.openConfirmModal = openConfirmModal;
+
 /* ============================= API SERVICES ============================= */
 let NCM_BRANCHES_DATA = [
   // Kathmandu Valley
@@ -2238,6 +2299,7 @@ window.openEditOrderModal = openEditOrderModal;
 
 async function submitEditOrderForm(event, oid){
   event.preventDefault();
+  hideModalError();
   const payload = {
     customer: document.getElementById('edit_ord_customer').value.trim(),
     handle: document.getElementById('edit_ord_handle').value.trim(),
@@ -2256,35 +2318,46 @@ async function submitEditOrderForm(event, oid){
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
+    const data = await res.json();
     if (res.ok) {
       toast(`Order ${oid} updated successfully`);
       closeModal();
       await fetchAllData();
+      renderAll();
     } else {
-      toast('Failed to update order', 'error');
+      showModalError(data.error || 'Failed to update order details');
     }
   } catch (err) {
-    toast('Error updating order', 'error');
+    showModalError('Error connecting to server while updating order');
   }
 }
 window.submitEditOrderForm = submitEditOrderForm;
 
-async function deleteOrder(oid){
-  if (!confirm(`Are you sure you want to delete order ${oid}? This will remove the order record and restore item inventory stock.`)) return;
-  try {
-    const res = await fetch(`/api/orders/${oid}`, { method: 'DELETE' });
-    if (res.ok) {
-      toast(`Order ${oid} deleted & stock restored`);
-      if (STATE.orderDetailId === oid) {
-        STATE.orderDetailId = null;
+function deleteOrder(oid){
+  openConfirmModal({
+    title: 'Delete Order',
+    message: `Are you sure you want to delete order <strong>${oid}</strong>?<br><br>This will remove the order record and restore item inventory stock automatically.`,
+    confirmText: 'Delete Order',
+    confirmClass: 'btn-danger-outline',
+    onConfirm: async () => {
+      try {
+        const res = await fetch(`/api/orders/${oid}`, { method: 'DELETE' });
+        if (res.ok) {
+          toast(`Order ${oid} deleted & stock restored`);
+          if (STATE.orderDetailId === oid) {
+            STATE.orderDetailId = null;
+          }
+          closeModal();
+          await fetchAllData();
+          renderAll();
+        } else {
+          toast('Failed to delete order', 'error');
+        }
+      } catch (err) {
+        toast('Error deleting order', 'error');
       }
-      await fetchAllData();
-    } else {
-      toast('Failed to delete order', 'error');
     }
-  } catch (err) {
-    toast('Error deleting order', 'error');
-  }
+  });
 }
 window.deleteOrder = deleteOrder;
 
@@ -2471,26 +2544,31 @@ function openProductModal(pid){
 }
 window.openProductModal = openProductModal;
 
-async function confirmDeleteProduct(pid){
+function confirmDeleteProduct(pid){
   const p = PRODUCTS.find(x=>x.id===pid);
   if(!p) return;
-  if(!confirm(`Are you sure you want to delete product "${p.name}" (SKU: ${p.sku})?\n\nThis will remove all variants and cannot be undone.`)) return;
-
-  try {
-    const res = await fetch(`/api/products/${pid}`, { method: 'DELETE' });
-    const data = await res.json();
-    if(res.ok){
-      toast(`Product "${p.name}" deleted successfully`);
-      const modalOverlay = document.getElementById('modalOverlay');
-      if (modalOverlay) modalOverlay.classList.remove('show');
-      await fetchAllData();
-      renderAll();
-    } else {
-      toast(data.error || 'Failed to delete product', 'error');
+  openConfirmModal({
+    title: 'Delete Product',
+    message: `Are you sure you want to delete product <strong>"${p.name}"</strong> (SKU: ${p.sku})?<br><br><span style="color:var(--danger);font-weight:600;">This will remove all variants and cannot be undone.</span>`,
+    confirmText: 'Delete Product',
+    confirmClass: 'btn-danger-outline',
+    onConfirm: async () => {
+      try {
+        const res = await fetch(`/api/products/${pid}`, { method: 'DELETE' });
+        const data = await res.json();
+        if(res.ok){
+          toast(`Product "${p.name}" deleted successfully`);
+          closeModal();
+          await fetchAllData();
+          renderAll();
+        } else {
+          toast(data.error || 'Failed to delete product', 'error');
+        }
+      } catch(e) {
+        toast('Server error deleting product', 'error');
+      }
     }
-  } catch(e) {
-    toast('Server error deleting product', 'error');
-  }
+  });
 }
 window.confirmDeleteProduct = confirmDeleteProduct;
 
@@ -2592,17 +2670,26 @@ async function saveProductModal(pid){
   const method = pid ? 'PUT' : 'POST';
   const url = pid ? `/api/products/${pid}` : '/api/products';
 
-  const res = await fetch(url, {
-    method,
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  });
+  hideModalError();
+  try {
+    const res = await fetch(url, {
+      method,
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
 
-  if(res.ok){
-    pendingProductImage = null;
-    closeModal();
-    toast('Product saved to SQL Database');
-    await fetchAllData();
+    const data = await res.json();
+    if(res.ok){
+      pendingProductImage = null;
+      closeModal();
+      toast('Product saved to SQL Database');
+      await fetchAllData();
+      renderAll();
+    } else {
+      showModalError(data.error || 'Failed to save product. Please check your inputs.');
+    }
+  } catch(e) {
+    showModalError('Server connection error while saving product.');
   }
 }
 window.saveProductModal = saveProductModal;
@@ -2746,10 +2833,11 @@ function removeOfferItem(idx){
 window.removeOfferItem = removeOfferItem;
 
 async function saveOfferModal(oid){
+  hideModalError();
   const name = document.getElementById('offerName').value.trim();
   const start = document.getElementById('offerStart').value;
   const end = document.getElementById('offerEnd').value;
-  if(!offerModalItems.length){ toast('Add at least one product to the offer'); return; }
+  if(!offerModalItems.length){ showModalError('Add at least one product to the offer'); return; }
 
   const payload = {
     name: name || 'New offer',
@@ -2762,19 +2850,54 @@ async function saveOfferModal(oid){
   const method = oid ? 'PUT' : 'POST';
   const url = oid ? `/api/offers/${oid}` : '/api/offers';
 
-  const res = await fetch(url, {
-    method,
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  });
+  try {
+    const res = await fetch(url, {
+      method,
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data = await res.json();
 
-  if(res.ok){
-    closeModal();
-    toast('Offer saved to SQL database');
-    await fetchAllData();
+    if(res.ok){
+      closeModal();
+      toast('Offer saved to SQL database');
+      await fetchAllData();
+      renderAll();
+    } else {
+      showModalError(data.error || 'Failed to save promotional offer');
+    }
+  } catch(e) {
+    showModalError('Server error while saving promotional offer');
   }
 }
 window.saveOfferModal = saveOfferModal;
+
+function deleteOffer(oid){
+  const o = OFFERS.find(x => x.id === oid);
+  const oName = o ? o.name : 'this offer';
+  openConfirmModal({
+    title: 'Delete Promotional Offer',
+    message: `Are you sure you want to delete offer <strong>"${oName}"</strong>?<br><br><span style="color:var(--danger);font-weight:600;">This action cannot be undone.</span>`,
+    confirmText: 'Delete Offer',
+    confirmClass: 'btn-danger-outline',
+    onConfirm: async () => {
+      try {
+        const res = await fetch(`/api/offers/${oid}`, { method: 'DELETE' });
+        if(res.ok){
+          toast("Offer campaign deleted!");
+          closeModal();
+          await fetchAllData();
+          renderAll();
+        } else {
+          toast('Failed to delete offer', 'error');
+        }
+      } catch(e) {
+        toast('Server error deleting offer', 'error');
+      }
+    }
+  });
+}
+window.deleteOffer = deleteOffer;
 
 /* ============================= SHIPMENTS (NCM COURIER INTEGRATION) ============================= */
 if(!STATE.shipmentTimeframe) STATE.shipmentTimeframe = 'all';
@@ -3734,6 +3857,7 @@ function openEditEmployeeModal(eid){
 window.openEditEmployeeModal = openEditEmployeeModal;
 
 async function saveEmployeeModal(eid){
+  hideModalError();
   const name = document.getElementById('empName').value.trim();
   const role = document.getElementById('empRole').value;
   const joined = document.getElementById('empJoined').value || '2026-07-28';
@@ -3741,7 +3865,7 @@ async function saveEmployeeModal(eid){
   const performance = parseInt(document.getElementById('empPerformance').value) || 90;
 
   if(!name){
-    toast("Employee Name is required!");
+    showModalError("Employee Name is required!");
     return;
   }
 
@@ -3749,27 +3873,52 @@ async function saveEmployeeModal(eid){
   const method = eid ? 'PUT' : 'POST';
   const url = eid ? `/api/employees/${eid}` : '/api/employees';
 
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
 
-  if(res.ok){
-    closeModal();
-    toast(eid ? 'Employee profile updated!' : 'New employee created successfully!');
-    await fetchAllData();
+    if(res.ok){
+      closeModal();
+      toast(eid ? 'Employee profile updated!' : 'New employee created successfully!');
+      await fetchAllData();
+      renderAll();
+    } else {
+      showModalError(data.error || 'Failed to save employee profile');
+    }
+  } catch(e) {
+    showModalError('Server error while saving employee profile');
   }
 }
 window.saveEmployeeModal = saveEmployeeModal;
 
-async function deleteEmployee(eid){
-  if(!confirm("Are you sure you want to delete this employee profile?")) return;
-  const res = await fetch(`/api/employees/${eid}`, { method: 'DELETE' });
-  if(res.ok){
-    toast("Employee profile deleted!");
-    await fetchAllData();
-  }
+function deleteEmployee(eid){
+  const emp = EMPLOYEES.find(e => e.id === eid);
+  const empName = emp ? emp.name : 'this employee';
+  openConfirmModal({
+    title: 'Delete Employee Profile',
+    message: `Are you sure you want to delete profile for <strong>"${empName}"</strong>?<br><br><span style="color:var(--danger);font-weight:600;">This action cannot be undone.</span>`,
+    confirmText: 'Delete Profile',
+    confirmClass: 'btn-danger-outline',
+    onConfirm: async () => {
+      try {
+        const res = await fetch(`/api/employees/${eid}`, { method: 'DELETE' });
+        if(res.ok){
+          toast("Employee profile deleted!");
+          closeModal();
+          await fetchAllData();
+          renderAll();
+        } else {
+          toast('Failed to delete employee profile', 'error');
+        }
+      } catch(e) {
+        toast('Server error deleting employee profile', 'error');
+      }
+    }
+  });
 }
 window.deleteEmployee = deleteEmployee;
 
@@ -4394,6 +4543,7 @@ window.openExpenseModal = openExpenseModal;
 
 async function submitExpenseForm(event, eid){
   event.preventDefault();
+  hideModalError();
   const payload = {
     title: document.getElementById('exp_title').value.trim(),
     amount: parseFloat(document.getElementById('exp_amount').value) || 0,
@@ -4412,32 +4562,43 @@ async function submitExpenseForm(event, eid){
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
+    const data = await res.json();
     if (res.ok) {
       toast(eid ? 'Expense updated successfully' : 'Expense recorded successfully');
       closeModal();
       await fetchAllData();
+      renderAll();
     } else {
-      toast('Failed to save expense', 'error');
+      showModalError(data.error || 'Failed to save expense record');
     }
   } catch (err) {
-    toast('Error saving expense', 'error');
+    showModalError('Error connecting to server while saving expense');
   }
 }
 window.submitExpenseForm = submitExpenseForm;
 
-async function deleteExpense(eid){
-  if (!confirm('Are you sure you want to delete this expense record?')) return;
-  try {
-    const res = await fetch(`/api/expenses/${eid}`, { method: 'DELETE' });
-    if (res.ok) {
-      toast('Expense deleted');
-      await fetchAllData();
-    } else {
-      toast('Failed to delete expense', 'error');
+function deleteExpense(eid){
+  openConfirmModal({
+    title: 'Delete Expense Record',
+    message: 'Are you sure you want to delete this expense record?<br><br><span style="color:var(--danger);font-weight:600;">This action cannot be undone.</span>',
+    confirmText: 'Delete Expense',
+    confirmClass: 'btn-danger-outline',
+    onConfirm: async () => {
+      try {
+        const res = await fetch(`/api/expenses/${eid}`, { method: 'DELETE' });
+        if (res.ok) {
+          toast('Expense deleted');
+          closeModal();
+          await fetchAllData();
+          renderAll();
+        } else {
+          toast('Failed to delete expense', 'error');
+        }
+      } catch (err) {
+        toast('Error deleting expense', 'error');
+      }
     }
-  } catch (err) {
-    toast('Error deleting expense', 'error');
-  }
+  });
 }
 window.deleteExpense = deleteExpense;
 
